@@ -1,0 +1,6 @@
+{
+  "name": "Shopify Enterprise Admin Dashboard",
+  "description": "A Shopify-style SaaS administration dashboard for e-commerce, supporting Products, Orders, Shipping, CRM, Gift Hampers, Lab Certificates, and Analytics with Dark Mode.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
