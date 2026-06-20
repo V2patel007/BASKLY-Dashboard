@@ -33,7 +33,6 @@ interface ProductsTabProps {
   products: Product[];
   setProducts: React.Dispatch<React.SetStateAction<Product[]>>;
   labCertificates: LabCertificateMapping[];
-  userRole: string; // for RBAC controls
   onLogActivity: (action: string, category: 'Product' | 'Order' | 'Customer' | 'Settings' | 'CMS' | 'Coupon', target: string) => void;
 }
 
@@ -41,7 +40,6 @@ export default function ProductsTab({
   products,
   setProducts,
   labCertificates,
-  userRole,
   onLogActivity
 }: ProductsTabProps) {
   // Navigation & Listing state
@@ -53,7 +51,7 @@ export default function ProductsTab({
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
 
   // RBAC checks
-  const isReadOnly = userRole === 'Customer Support';
+  const isReadOnly = false;
 
   // Editor states (binds to active product)
   const [editorTab, setEditorTab] = useState<'general' | 'media' | 'variants' | 'inventory' | 'seo' | 'shipping' | 'certificates'>('general');

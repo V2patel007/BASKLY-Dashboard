@@ -28,14 +28,12 @@ import { Order, OrderItem, ShippingLog } from '../types.ts';
 interface OrdersTabProps {
   orders: Order[];
   setOrders: React.Dispatch<React.SetStateAction<Order[]>>;
-  userRole: string; // for RBAC
   onLogActivity: (action: string, category: 'Product' | 'Order' | 'Customer' | 'Settings' | 'CMS' | 'Coupon', target: string) => void;
 }
 
 export default function OrdersTab({
   orders,
   setOrders,
-  userRole,
   onLogActivity
 }: OrdersTabProps) {
   // Navigation
@@ -48,7 +46,7 @@ export default function OrdersTab({
   // Shiprocket simulated loading state
   const [logisticsActiveId, setLogisticsActiveId] = useState<'ship' | 'awb' | 'label' | 'track' | null>(null);
 
-  const isReadOnly = userRole === 'Inventory Manager'; // Inventory managers usually can fulfill but maybe restricted on basic finance changes
+  const isReadOnly = false; // Inventory managers usually can fulfill but maybe restricted on basic finance changes
 
   // Filter List
   const filteredOrders = orders.filter((o) => {

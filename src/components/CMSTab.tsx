@@ -10,14 +10,12 @@ import { CMSPage, HomeBanner } from '../types.ts';
 interface CMSTabProps {
   cmsPages: CMSPage[];
   setCmsPages: React.Dispatch<React.SetStateAction<CMSPage[]>>;
-  userRole: string; // for RBAC
   onLogActivity: (action: string, category: 'Product' | 'Order' | 'Customer' | 'Settings' | 'CMS' | 'Coupon', target: string) => void;
 }
 
 export default function CMSTab({
   cmsPages,
   setCmsPages,
-  userRole,
   onLogActivity
 }: CMSTabProps) {
   // Section Navigation
@@ -26,7 +24,7 @@ export default function CMSTab({
   const [isCreatingPage, setIsCreatingPage] = useState(false);
   const [pageForm, setPageForm] = useState<Partial<CMSPage>>({});
 
-  const isReadOnly = userRole === 'Customer Support' || userRole === 'Inventory Manager';
+  const isReadOnly = false;
 
   // Simulated Homepage sections order state
   const [homeBanners, setHomeBanners] = useState<HomeBanner[]>([

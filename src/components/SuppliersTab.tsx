@@ -10,14 +10,12 @@ import { Supplier } from '../types.ts';
 interface SuppliersTabProps {
   suppliers: Supplier[];
   setSuppliers: React.Dispatch<React.SetStateAction<Supplier[]>>;
-  userRole: string; // RBAC
   onLogActivity: (action: string, category: 'Product' | 'Order' | 'Customer' | 'Settings' | 'CMS' | 'Coupon', target: string) => void;
 }
 
 export default function SuppliersTab({
   suppliers,
   setSuppliers,
-  userRole,
   onLogActivity
 }: SuppliersTabProps) {
   const [isCreating, setIsCreating] = useState(false);
@@ -26,7 +24,7 @@ export default function SuppliersTab({
   const [supPhone, setSupPhone] = useState('');
   const [supLead, setSupLead] = useState(5);
 
-  const isReadOnly = userRole === 'Customer Support';
+  const isReadOnly = false;
 
   const handleSaveSupplier = () => {
     if (isReadOnly) return;

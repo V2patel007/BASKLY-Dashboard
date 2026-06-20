@@ -42,7 +42,6 @@ import SettingsTab from './components/SettingsTab.tsx';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
-  const [userRole, setUserRole] = useState<'Super Admin' | 'Admin' | 'Manager' | 'Inventory Manager' | 'Customer Support'>('Administrator' as any);
   const [darkMode, setDarkMode] = useState<boolean>(false);
   const [isMobileOpen, setIsMobileOpen] = useState<boolean>(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState<boolean>(false);
@@ -94,7 +93,7 @@ export default function App() {
       id: `act-${Date.now()}`,
       action,
       user: 'virajptl00@gmail.com',
-      role: userRole,
+      role: 'Administrator',
       timestamp: new Date().toISOString(),
       target,
       category
@@ -121,7 +120,6 @@ export default function App() {
             products={products}
             setProducts={setProducts}
             labCertificates={labCertificates}
-            userRole={userRole}
             onLogActivity={handleLogActivity}
           />
         );
@@ -130,7 +128,6 @@ export default function App() {
           <CategoriesTab
             categories={categories}
             setCategories={setCategories}
-            userRole={userRole}
             onLogActivity={handleLogActivity}
           />
         );
@@ -139,7 +136,6 @@ export default function App() {
           <OrdersTab
             orders={orders}
             setOrders={setOrders}
-            userRole={userRole}
             onLogActivity={handleLogActivity}
           />
         );
@@ -148,7 +144,6 @@ export default function App() {
           <ShippingTab
             ndrCases={ndrCases}
             setNdrCases={setNdrCases}
-            userRole={userRole}
             onLogActivity={handleLogActivity}
           />
         );
@@ -157,7 +152,6 @@ export default function App() {
           <CustomersTab
             customers={customers}
             setCustomers={setCustomers}
-            userRole={userRole}
             onLogActivity={handleLogActivity}
           />
         );
@@ -166,7 +160,6 @@ export default function App() {
           <CouponsTab
             coupons={coupons}
             setCoupons={setCoupons}
-            userRole={userRole}
             onLogActivity={handleLogActivity}
           />
         );
@@ -175,7 +168,6 @@ export default function App() {
           <CMSTab
             cmsPages={cmsPages}
             setCmsPages={setCmsPages}
-            userRole={userRole}
             onLogActivity={handleLogActivity}
           />
         );
@@ -185,7 +177,6 @@ export default function App() {
             hampers={giftHampers}
             setHampers={setHampers}
             products={products}
-            userRole={userRole}
             onLogActivity={handleLogActivity}
           />
         );
@@ -196,7 +187,6 @@ export default function App() {
             setLabCertificates={setLabCertificates}
             products={products}
             setProducts={setProducts}
-            userRole={userRole}
             onLogActivity={handleLogActivity}
           />
         );
@@ -205,7 +195,6 @@ export default function App() {
           <SuppliersTab
             suppliers={suppliers}
             setSuppliers={setSuppliers}
-            userRole={userRole}
             onLogActivity={handleLogActivity}
           />
         );
@@ -214,8 +203,6 @@ export default function App() {
       case 'settings':
         return (
           <SettingsTab
-            userRole={userRole}
-            setUserRole={setUserRole as any}
             onLogActivity={handleLogActivity}
           />
         );
@@ -248,8 +235,6 @@ export default function App() {
           onSearchClick={() => setIsCommandPaletteOpen(true)}
           darkMode={darkMode}
           setDarkMode={setDarkMode}
-          userRole={userRole}
-          setUserRole={setUserRole}
           activityLogs={activityLogs}
         />
 

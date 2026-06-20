@@ -24,14 +24,12 @@ import { NDRCase } from '../types.ts';
 interface ShippingTabProps {
   ndrCases: NDRCase[];
   setNdrCases: React.Dispatch<React.SetStateAction<NDRCase[]>>;
-  userRole: string;
   onLogActivity: (action: string, category: 'Product' | 'Order' | 'Customer' | 'Settings' | 'CMS' | 'Coupon', target: string) => void;
 }
 
 export default function ShippingTab({
   ndrCases,
   setNdrCases,
-  userRole,
   onLogActivity
 }: ShippingTabProps) {
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);

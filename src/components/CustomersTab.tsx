@@ -31,14 +31,12 @@ import { Customer } from '../types.ts';
 interface CustomersTabProps {
   customers: Customer[];
   setCustomers: React.Dispatch<React.SetStateAction<Customer[]>>;
-  userRole: string;
   onLogActivity: (action: string, category: 'Product' | 'Order' | 'Customer' | 'Settings' | 'CMS' | 'Coupon', target: string) => void;
 }
 
 export default function CustomersTab({
   customers,
   setCustomers,
-  userRole,
   onLogActivity
 }: CustomersTabProps) {
   const [selectedCustId, setSelectedCustId] = useState<string | null>(null);

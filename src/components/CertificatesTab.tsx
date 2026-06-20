@@ -12,7 +12,6 @@ interface CertificatesTabProps {
   setLabCertificates: React.Dispatch<React.SetStateAction<LabCertificateMapping[]>>;
   products: Product[];
   setProducts: React.Dispatch<React.SetStateAction<Product[]>>;
-  userRole: string; // RBAC
   onLogActivity: (action: string, category: 'Product' | 'Order' | 'Customer' | 'Settings' | 'CMS' | 'Coupon', target: string) => void;
 }
 
@@ -21,7 +20,6 @@ export default function CertificatesTab({
   setLabCertificates,
   products,
   setProducts,
-  userRole,
   onLogActivity
 }: CertificatesTabProps) {
   const [isCreating, setIsCreating] = useState(false);
@@ -29,7 +27,7 @@ export default function CertificatesTab({
   const [expiry, setExpiry] = useState('');
   const [linkedpId, setLinkedpId] = useState('');
 
-  const isReadOnly = userRole === 'Customer Support';
+  const isReadOnly = false;
 
   const handleSaveCert = () => {
     if (isReadOnly) return;

@@ -10,14 +10,12 @@ import { Coupon } from '../types.ts';
 interface CouponsTabProps {
   coupons: Coupon[];
   setCoupons: React.Dispatch<React.SetStateAction<Coupon[]>>;
-  userRole: string; // for RBAC
   onLogActivity: (action: string, category: 'Product' | 'Order' | 'Customer' | 'Settings' | 'CMS' | 'Coupon', target: string) => void;
 }
 
 export default function CouponsTab({
   coupons,
   setCoupons,
-  userRole,
   onLogActivity
 }: CouponsTabProps) {
   const [isCreating, setIsCreating] = useState(false);
@@ -29,7 +27,7 @@ export default function CouponsTab({
     rules: { minOrderValue: 20, maxUsage: 100, currentUsage: 0, expiryDate: '2026-12-31' }
   });
 
-  const isReadOnly = userRole === 'Customer Support' || userRole === 'Inventory Manager';
+  const isReadOnly = false;
 
   const handleSave = () => {
     if (isReadOnly) return;

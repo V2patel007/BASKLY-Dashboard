@@ -11,7 +11,6 @@ interface HampersTabProps {
   hampers: GiftHamper[];
   setHampers: React.Dispatch<React.SetStateAction<GiftHamper[]>>;
   products: Product[];
-  userRole: string; // RBAC
   onLogActivity: (action: string, category: 'Product' | 'Order' | 'Customer' | 'Settings' | 'CMS' | 'Coupon', target: string) => void;
 }
 
@@ -19,7 +18,6 @@ export default function HampersTab({
   hampers,
   setHampers,
   products,
-  userRole,
   onLogActivity
 }: HampersTabProps) {
   const [isCreating, setIsCreating] = useState(false);
@@ -32,7 +30,7 @@ export default function HampersTab({
   const [addpId, setAddpId] = useState('');
   const [addQty, setAddQty] = useState(1);
 
-  const isReadOnly = userRole === 'Customer Support';
+  const isReadOnly = false;
 
   // Math totals calculation
   const aggregatedBasePrice = bundleProducts.reduce((sum, bp) => {
