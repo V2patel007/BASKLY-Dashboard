@@ -24,29 +24,37 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { Order, OrderItem, ShippingLog } from '../types.ts';
+import { formatPrice } from '../utils.ts';
 
 interface OrdersTabProps {
   orders: Order[];
   setOrders: React.Dispatch<React.SetStateAction<Order[]>>;
+  userRole: string; // for RBAC
   onLogActivity: (action: string, category: 'Product' | 'Order' | 'Customer' | 'Settings' | 'CMS' | 'Coupon', target: string) => void;
+  currency: string;
+  storeName: string;
 }
 
 export default function OrdersTab({
   orders,
   setOrders,
-  onLogActivity
+  userRole,
+  onLogActivity,
+  currency,
+  storeName
 }: OrdersTabProps) {
   // Navigation
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [paymentFilter, setPaymentFilter] = useState<'All' | 'Paid' | 'Pending' | 'Refunded'>('All');
-  const [fulfillmentFilter, setFulfillmentFilter] = useState<'All' | 'Unfulfilled' | 'Fulfilled' | 'Shipped' | 'Delivered'>('All');
+  const [fulfillmentFilter, setFulfillmentFilter] = useState<'All' | 'Unfulfilled' | 'Fulfilled' | 'Ready to Ship' | 'Shipped' | 'Delivered'>('All');
   const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
+  const [isShippingLabelOpen, setIsShippingLabelOpen] = useState(false);
 
   // Shiprocket simulated loading state
   const [logisticsActiveId, setLogisticsActiveId] = useState<'ship' | 'awb' | 'label' | 'track' | null>(null);
 
-  const isReadOnly = false; // Inventory managers usually can fulfill but maybe restricted on basic finance changes
+  const isReadOnly = userRole === 'Inventory Manager'; // Inventory managers usually can fulfill but maybe restricted on basic finance changes
 
   // Filter List
   const filteredOrders = orders.filter((o) => {
@@ -59,7 +67,7 @@ export default function OrdersTab({
   const activeOrder = orders.find(o => o.id === selectedOrderId);
 
   // Order state actions
-  const updateFulfillment = (status: 'Fulfilled' | 'Shipped' | 'Delivered' | 'Cancelled') => {
+  const updateFulfillment = (status: 'Fulfilled' | 'Ready to Ship' | 'Shipped' | 'Delivered' | 'Cancelled') => {
     if (!selectedOrderId) return;
     setOrders(prev => prev.map(o => {
       if (o.id === selectedOrderId) {
@@ -193,7 +201,7 @@ export default function OrdersTab({
 
             <div className="flex items-center gap-2 overflow-x-auto pb-1 shrink-0">
               <span className="text-[10px] font-bold text-stone-500 tracking-tight uppercase shrink-0">Fulfillment:</span>
-              {(['All', 'Unfulfilled', 'Shipped', 'Delivered'] as const).map((full) => (
+              {(['All', 'Unfulfilled', 'Fulfilled', 'Ready to Ship', 'Shipped', 'Delivered'] as const).map((full) => (
                 <button
                   key={full}
                   onClick={() => setFulfillmentFilter(full)}
@@ -244,7 +252,7 @@ export default function OrdersTab({
                         <td className="py-3 px-4 text-stone-500 font-medium">
                           {new Date(o.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                         </td>
-                        <td className="py-3 px-4 text-right font-bold text-stone-950">₹{o.amount.toFixed(2)}</td>
+                        <td className="py-3 px-4 text-right font-bold text-stone-950">{formatPrice(o.amount, currency)}</td>
                         <td className="py-3 px-4 text-center">
                           <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
                             o.paymentStatus === 'Paid'
@@ -280,9 +288,24 @@ export default function OrdersTab({
                           )}
                         </td>
                         <td className="py-3 px-4 text-center">
-                          <button className="p-1 hover:bg-stone-100 rounded-md">
-                            <ChevronRight className="h-4 w-4 text-stone-400" />
-                          </button>
+                          <div className="flex items-center justify-center gap-2">
+                            <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                              o.fulfillmentStatus === 'Delivered'
+                                ? 'bg-green-100 text-green-800 border border-green-200'
+                                : o.fulfillmentStatus === 'Shipped'
+                                ? 'bg-blue-105 text-blue-700 border border-transparent font-mono'
+                                : o.fulfillmentStatus === 'Ready to Ship'
+                                ? 'bg-amber-100 text-amber-800 border border-amber-200 animate-pulse'
+                                : o.fulfillmentStatus === 'Cancelled'
+                                ? 'bg-red-100 text-red-800 border border-red-200'
+                                : 'bg-stone-100 text-stone-600 border border-stone-200'
+                            }`}>
+                              {o.fulfillmentStatus}
+                            </span>
+                            <button className="p-1 hover:bg-stone-100 rounded-md">
+                              <ChevronRight className="h-4 w-4 text-stone-400" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -299,17 +322,30 @@ export default function OrdersTab({
             
             {/* Nav Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-stone-100 pb-5 gap-3">
-              <div className="flex items-center gap-3">
+               <div className="flex items-center gap-3">
                 <button onClick={() => setSelectedOrderId(null)} className="p-1.5 hover:bg-stone-50 rounded bg-stone-100 border border-stone-200">
                   <ArrowLeft className="h-4 w-4" />
                 </button>
                 <div>
-                  <h3 className="text-sm font-extrabold text-stone-900 flex items-center gap-2">
+                  <h3 className="text-sm font-extrabold text-stone-900 flex flex-wrap items-center gap-2">
                     Order details: {activeOrder.id}
                     <span className={`text-[10px] font-bold border px-2 py-0.5 rounded-full ${
                       activeOrder.paymentStatus === 'Paid' ? 'bg-emerald-100 border-emerald-200 text-emerald-900' : 'bg-amber-100 border-amber-200 text-amber-900'
                     }`}>
-                      {activeOrder.paymentStatus}
+                      Payment: {activeOrder.paymentStatus}
+                    </span>
+                    <span className={`text-[10px] font-bold border px-2 py-0.5 rounded-full ${
+                      activeOrder.fulfillmentStatus === 'Delivered'
+                        ? 'bg-green-100 border-green-200 text-green-900'
+                        : activeOrder.fulfillmentStatus === 'Shipped'
+                        ? 'bg-blue-100 border-blue-200 text-blue-900 font-mono'
+                        : activeOrder.fulfillmentStatus === 'Ready to Ship'
+                        ? 'bg-amber-100 border-amber-200 text-amber-900 animate-pulse'
+                        : activeOrder.fulfillmentStatus === 'Cancelled'
+                        ? 'bg-red-100 border-red-200 text-red-900'
+                        : 'bg-stone-100 border-stone-200 text-stone-900'
+                    }`}>
+                      Fulfillment: {activeOrder.fulfillmentStatus}
                     </span>
                   </h3>
                   <p className="text-[10px] text-stone-400 mt-1 font-medium select-none">
@@ -327,11 +363,37 @@ export default function OrdersTab({
                   Print Tax Bill
                 </button>
                 {activeOrder.fulfillmentStatus === 'Unfulfilled' && !isReadOnly && (
+                  <>
+                    <button
+                      onClick={() => updateFulfillment('Ready to Ship')}
+                      className="inline-flex items-center gap-1 px-3.5 py-1.5 text-xs font-extrabold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-2xs"
+                    >
+                      <CheckCircle2 className="h-4 w-4" />
+                      Mark Ready to Ship
+                    </button>
+                    <button
+                      onClick={() => updateFulfillment('Fulfilled')}
+                      className="inline-flex items-center gap-1 px-3.5 py-1.5 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 border border-stone-300 rounded-lg"
+                    >
+                      Mark Fulfilled
+                    </button>
+                  </>
+                )}
+                {activeOrder.fulfillmentStatus === 'Ready to Ship' && (
                   <button
-                    onClick={() => updateFulfillment('Fulfilled')}
-                    className="px-3.5 py-1.5 text-xs font-extrabold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-2xs"
+                    onClick={() => setIsShippingLabelOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-extrabold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-2xs"
                   >
-                    Mark Fulfilled
+                    <Printer className="h-4 w-4" />
+                    Print Shipping Label
+                  </button>
+                )}
+                {activeOrder.fulfillmentStatus === 'Ready to Ship' && !isReadOnly && (
+                  <button
+                    onClick={() => updateFulfillment('Shipped')}
+                    className="inline-flex items-center gap-1 px-3.5 py-1.5 text-xs font-extrabold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-2xs"
+                  >
+                    Mark Shipped
                   </button>
                 )}
                 {activeOrder.paymentStatus === 'Paid' && !isReadOnly && (
@@ -368,8 +430,8 @@ export default function OrdersTab({
                         </div>
 
                         <div className="text-right shrink-0">
-                          <span className="text-xs font-semibold text-stone-500 font-mono">₹{item.price.toFixed(2)} x {item.quantity}</span>
-                          <p className="text-xs font-bold text-stone-900 mt-0.5">₹{(item.price * item.quantity).toFixed(2)}</p>
+                          <span className="text-xs font-semibold text-stone-500 font-mono">{formatPrice(item.price, currency)} x {item.quantity}</span>
+                          <p className="text-xs font-bold text-stone-900 mt-0.5">{formatPrice(item.price * item.quantity, currency)}</p>
                         </div>
                       </div>
                     ))}
@@ -379,19 +441,19 @@ export default function OrdersTab({
                   <div className="border-t border-stone-100 pt-3 space-y-1.5 text-xs text-stone-600 font-semibold select-none">
                     <div className="flex justify-between">
                       <span>Taxable Price</span>
-                      <span className="font-mono text-stone-900">₹{activeOrder.amount.toFixed(2)}</span>
+                      <span className="font-mono text-stone-900">{formatPrice(activeOrder.amount, currency)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Simulated Tax (5% Spices GST)</span>
-                      <span className="font-mono text-stone-900">₹{activeOrder.taxAmount.toFixed(2)}</span>
+                      <span className="font-mono text-stone-900">{formatPrice(activeOrder.taxAmount, currency)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Postal Courier Fee</span>
-                      <span className="font-mono text-stone-900">₹{activeOrder.shippingAmount.toFixed(2)}</span>
+                      <span className="font-mono text-stone-900">{formatPrice(activeOrder.shippingAmount, currency)}</span>
                     </div>
                     <div className="flex justify-between border-t border-stone-100 pt-2 text-sm font-extrabold text-stone-950">
                       <span>Total Invoice</span>
-                      <span className="font-mono text-indigo-700">₹{(activeOrder.amount + activeOrder.taxAmount + activeOrder.shippingAmount).toFixed(2)}</span>
+                      <span className="font-mono text-indigo-700">{formatPrice(activeOrder.amount + activeOrder.taxAmount + activeOrder.shippingAmount, currency)}</span>
                     </div>
                   </div>
                 </div>
@@ -631,7 +693,7 @@ export default function OrdersTab({
                       </td>
                       <td className="py-2 text-center font-bold">{item.quantity}</td>
                       <td className="py-2 text-right font-mono text-stone-500">09102010</td>
-                      <td className="py-2 text-right font-bold text-stone-950">₹{item.price.toFixed(2)}</td>
+                      <td className="py-2 text-right font-bold text-stone-950">{formatPrice(item.price, currency)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -647,11 +709,11 @@ export default function OrdersTab({
                 <div className="text-right font-semibold space-y-1">
                   <div className="flex gap-4">
                     <span>Taxable Base:</span>
-                    <span className="font-mono shrink-0">₹{activeOrder.amount.toFixed(2)}</span>
+                    <span className="font-mono shrink-0">{formatPrice(activeOrder.amount, currency)}</span>
                   </div>
                   <div className="flex gap-4">
                     <span>Total Bill:</span>
-                    <span className="font-mono font-extrabold text-[#008060] shrink-0">₹{(activeOrder.amount + activeOrder.taxAmount + activeOrder.shippingAmount).toFixed(2)}</span>
+                    <span className="font-mono font-extrabold text-[#008060] shrink-0">{formatPrice(activeOrder.amount + activeOrder.taxAmount + activeOrder.shippingAmount, currency)}</span>
                   </div>
                 </div>
               </div>
@@ -662,6 +724,152 @@ export default function OrdersTab({
                 <p className="text-[9px] font-mono text-stone-400 mt-1">TRACKING: {activeOrder.shiprocket?.awbNumber || 'PENDING_AWB_GENERATION'}</p>
               </div>
 
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* SHIPPING LABEL MODAL */}
+      {isShippingLabelOpen && activeOrder && (
+        <div className="fixed inset-0 z-55 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs select-none">
+          <div className="relative bg-white rounded-xl border border-stone-200 w-full max-w-md max-h-[90vh] overflow-y-auto flex flex-col p-5 shadow-2xl animate-scale-up text-stone-900">
+            
+            {/* Top Toolbar */}
+            <div className="flex justify-between items-center pb-3 border-b border-stone-100 mb-4 shrink-0">
+              <h4 className="text-xs font-bold text-emerald-700 uppercase tracking-wider flex items-center gap-1.5">
+                <Truck className="h-4 w-4" /> shipping label dispatch manifest
+              </h4>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => window.print()}
+                  className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 border border-transparent text-white text-xs font-bold rounded shadow-xs hover:shadow transition-colors inline-flex items-center gap-1 cursor-pointer"
+                >
+                  <Printer className="h-3 w-3" />
+                  Print Label
+                </button>
+                <button
+                  onClick={() => setIsShippingLabelOpen(false)}
+                  className="px-2.5 py-1 border border-stone-200 text-stone-500 text-xs font-semibold rounded hover:bg-stone-50 transition-colors cursor-pointer"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+
+            {/* Simulated 4x6 Thermal Shipping Label Frame */}
+            <div className="bg-stone-50 p-3 rounded-lg border border-stone-200">
+              <div id="shipping-label-frame" className="bg-white p-4 border-2 border-black rounded shadow-xs space-y-4 font-sans text-black leading-tight select-text text-left max-w-sm mx-auto">
+                
+                {/* Store Branding Header with Route Info */}
+                <div className="flex justify-between items-start border-b-2 border-black pb-2">
+                  <div>
+                    <h3 className="text-sm font-black uppercase tracking-wider font-display leading-none">{storeName}</h3>
+                    <p className="text-[8px] font-medium text-stone-500 mt-1 uppercase">Dispatch Center Direct</p>
+                  </div>
+                  <div className="text-right">
+                    <span className="inline-block border border-black bg-black text-white text-[9px] font-black px-1.5 py-0.5 rounded uppercase">
+                      PRIORITY AIR
+                    </span>
+                  </div>
+                </div>
+
+                {/* Sender & Receiver details split */}
+                <div className="grid grid-cols-1 divide-y divide-dashed divide-stone-300">
+                  
+                  {/* SHIP FROM */}
+                  <div className="py-2 text-[8px] space-y-0.5">
+                    <span className="font-extrabold uppercase tracking-wide text-stone-500">SHIP FROM:</span>
+                    <p className="font-bold">{storeName} - HQ Warehouse</p>
+                    <p>Sector-B, Industrial Estate, Pampore</p>
+                    <p>Pulwama, Jammu & Kashmir, 192121</p>
+                    <p className="font-mono">Contact: support@baskly.com</p>
+                  </div>
+
+                  {/* SHIP TO (Consignee) */}
+                  <div className="py-3 text-[10px] space-y-1">
+                    <span className="text-[8px] font-extrabold uppercase tracking-wide text-stone-500 block">SHIP TO:</span>
+                    <p className="text-xs font-black uppercase text-black">{activeOrder.customer.name}</p>
+                    <p className="font-bold text-stone-850 leading-relaxed">
+                      {activeOrder.shippingAddress.street}
+                    </p>
+                    <p className="font-extrabold text-stone-900">
+                      {activeOrder.shippingAddress.city}, {activeOrder.shippingAddress.state} – {activeOrder.shippingAddress.zip}
+                    </p>
+                    <p className="text-[9px] font-bold text-stone-600 mt-1 uppercase">
+                      Country: {activeOrder.shippingAddress.country}
+                    </p>
+                    <p className="text-[9px] font-mono font-bold text-stone-600">
+                      Phone: {activeOrder.customer.phone}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Logistic Courier routing codes & large postal PIN block */}
+                <div className="border-t-2 border-black pt-3 flex items-stretch">
+                  <div className="flex-1 pr-3 border-r border-dashed border-stone-300 space-y-1 text-[8px]">
+                    <div>
+                      <span className="font-bold text-stone-500">AWB TRK #:</span>
+                      <p className="font-mono font-black text-xs text-stone-950 mt-0.5">
+                        {activeOrder.shiprocket?.awbNumber || `SR-MOCK-${Math.floor(1000000000 + Math.random() * 9000000000)}`}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="font-bold text-stone-500">CARRIER DESK:</span>
+                      <p className="font-black text-stone-900 mt-0.5">
+                        {activeOrder.shiprocket?.courierName || 'Delhivery Air Standard'}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="font-bold text-stone-500">ORDER ID:</span>
+                      <p className="font-mono font-bold text-stone-900 mt-0.5">{activeOrder.id}</p>
+                    </div>
+                  </div>
+
+                  <div className="w-1/3 pl-3 flex flex-col justify-center items-center text-center bg-stone-50 p-1.5 rounded border border-stone-200">
+                    <span className="text-[7px] font-black text-stone-400 uppercase tracking-widest leading-none">POSTAL ZONE</span>
+                    <span className="text-base font-black text-stone-950 tracking-tighter mt-1">
+                      {activeOrder.shippingAddress.zip.slice(0, 3)}
+                    </span>
+                    <span className="text-[9px] font-extrabold text-stone-600 font-mono tracking-tight leading-none mt-0.5">
+                      {activeOrder.shippingAddress.zip.slice(3)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Item Details Manifest (Thermal sticker inventory check list) */}
+                <div className="border-t-2 border-black pt-2 text-[8px] space-y-1.5">
+                  <p className="font-extrabold text-stone-500 uppercase tracking-wide">Box Contents checklist:</p>
+                  <div className="divide-y divide-dotted divide-stone-300">
+                    {activeOrder.items.map((item, idx) => (
+                      <div key={item.id} className="flex justify-between py-1 text-[9px] font-semibold text-stone-850">
+                        <span className="truncate max-w-[150px]">{idx + 1}. {item.productName}</span>
+                        <span className="font-black font-mono">QTY: {item.quantity}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Giant Barcode and Scannable Router Marker */}
+                <div className="border-t-2 border-black pt-3 text-center space-y-2">
+                  <div className="flex justify-center items-center">
+                    <Barcode className="h-10 w-full text-black transform scale-x-110" />
+                  </div>
+                  <div className="flex justify-between items-center text-[7px] font-mono font-bold text-stone-500 px-1">
+                    <span>*MOCK SHIPMENT COMPLIANT*</span>
+                    <span>(01)937102917300</span>
+                    <span>{new Date(activeOrder.date).toLocaleDateString()}</span>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            {/* Note instruction info */}
+            <div className="mt-4 text-[10px] text-stone-500 font-medium leading-relaxed bg-stone-50 p-3 rounded border border-stone-150">
+              <p className="text-stone-600">
+                This shipping label is generated as a standard <b>4x6 thermal printer format</b>. Ready for package dispatch, weighing approx <b>0.5kg</b>. Close this modal to mark dispatched.
+              </p>
             </div>
 
           </div>

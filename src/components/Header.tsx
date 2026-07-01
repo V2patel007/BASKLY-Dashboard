@@ -25,6 +25,8 @@ interface HeaderProps {
   onSearchClick: () => void;
   darkMode: boolean;
   setDarkMode: (dark: boolean) => void;
+  userRole: 'Super Admin' | 'Admin' | 'Manager' | 'Inventory Manager' | 'Customer Support';
+  setUserRole: (role: 'Super Admin' | 'Admin' | 'Manager' | 'Inventory Manager' | 'Customer Support') => void;
   activityLogs: ActivityLog[];
 }
 
@@ -33,8 +35,11 @@ export default function Header({
   onSearchClick,
   darkMode,
   setDarkMode,
+  userRole,
+  setUserRole,
   activityLogs
 }: HeaderProps) {
+  const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   const [showNotificationCount, setShowNotificationCount] = useState(true);
   const [showActivityDrawer, setShowActivityDrawer] = useState(false);
 
@@ -85,7 +90,7 @@ export default function Header({
           
           {/* Quick External Links */}
           <a
-            href="https://baskly.in"
+            href="https://ais-dev-rzhl6qlj5uiy357c2r4xbe-267029330599.asia-east1.run.app"
             target="_blank"
             rel="noopener noreferrer"
             className="hidden md:flex items-center gap-1.5 text-xs font-semibold text-[#005c46] hover:bg-[#f1fcf9] border border-[#d2d2d2] bg-white px-3 py-1.5 rounded-md transition-colors"
@@ -109,17 +114,59 @@ export default function Header({
             )}
           </button>
 
-          {/* Active User Indicator */}
-          <div className="flex items-center gap-2 border border-[#d2d2d2] bg-white px-3 py-1.5 rounded-md text-xs font-medium">
-            <div className="w-6 h-6 bg-[#2c6ecb] rounded-full text-white text-[10px] font-bold flex items-center justify-center shrink-0">
-              HP
-            </div>
-            <div className="hidden sm:text-left sm:block">
-              <p className="text-[11px] font-bold text-stone-800 leading-tight">Hetashvi Parikh</p>
-              <span className="inline-block text-[8px] font-bold uppercase px-1 border rounded-[3px] scale-95 origin-left bg-purple-100 text-purple-700 border-purple-200">
-                Administrator
-              </span>
-            </div>
+          {/* Dark / Light Toggle */}
+          <button
+            onClick={() => setDarkMode(!darkMode)}
+            className="p-2 text-stone-600 hover:text-stone-950 rounded-full bg-[#ebebeb] hover:bg-gray-200 border border-[#d2d2d2] transition-colors"
+            title={darkMode ? "Set Light Mode" : "Dark theme"}
+          >
+            {darkMode ? <Sun className="h-4 w-4 text-amber-500" /> : <Moon className="h-4 w-4" />}
+          </button>
+
+          <div className="h-6 w-px bg-[#d2d2d2]" />
+
+          {/* High-fidelity Active Role Selector (RBAC Simulation) */}
+          <div className="relative">
+            <button
+              onClick={() => setShowRoleDropdown(!showRoleDropdown)}
+              className="flex items-center gap-2 text-[#303030] hover:bg-[#f7f7f7] border border-[#d2d2d2] bg-white px-3 py-1.5 rounded-md text-xs font-medium transition-colors"
+            >
+              <div className="w-6 h-6 bg-[#2c6ecb] rounded-full text-white text-[10px] font-bold flex items-center justify-center shrink-0">
+                VP
+              </div>
+              <div className="hidden sm:text-left sm:block">
+                <p className="text-[11px] font-bold text-stone-800 leading-tight">Viraj Patel</p>
+                <span className={`inline-block text-[8px] font-bold uppercase px-1 border rounded-[3px] scale-95 origin-left ${getRoleColor(userRole)}`}>
+                  {userRole}
+                </span>
+              </div>
+              <ChevronDown className="h-3.5 w-3.5 text-stone-500 shrink-0" />
+            </button>
+
+            {showRoleDropdown && (
+              <div className="absolute right-0 mt-2 w-52 bg-white border border-[#d2d2d2] rounded-md shadow-lg py-1.5 z-50">
+                <p className="px-3 py-1 text-[9px] font-bold text-stone-400 uppercase tracking-wider border-b border-[#f1f1f1] mb-1">
+                  Change RBAC Role
+                </p>
+                {(['Super Admin', 'Admin', 'Manager', 'Inventory Manager', 'Customer Support'] as const).map((role) => (
+                  <button
+                    key={role}
+                    onClick={() => {
+                       setUserRole(role);
+                      setShowRoleDropdown(false);
+                    }}
+                    className={`flex items-center justify-between w-full px-3 py-1.5 text-left text-xs font-semibold ${
+                      userRole === role
+                        ? 'text-[#005c46] bg-[#ebebeb]'
+                        : 'text-stone-700 hover:bg-[#f7f7f7]'
+                    }`}
+                  >
+                    <span>{role}</span>
+                    {userRole === role && <ShieldCheck className="h-3.5 w-3.5 text-[#005c46]" />}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
         </div>

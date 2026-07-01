@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { Keyboard } from 'lucide-react';
 import {
   INITIAL_CATEGORIES,
   INITIAL_PRODUCTS,
@@ -18,11 +19,13 @@ import {
 } from './data.ts';
 
 import { Product, Category, Order, Customer, Coupon, GiftHamper, LabCertificateMapping, Supplier, ActivityLog, CMSPage, NDRCase } from './types.ts';
+import { generateMockOrder } from './utils.ts';
 
 // Nav elements layouts
 import Sidebar from './components/Sidebar.tsx';
 import Header from './components/Header.tsx';
 import CommandPalette from './components/CommandPalette.tsx';
+import KeyboardShortcutsModal from './components/KeyboardShortcutsModal.tsx';
 import DeveloperFilesViewer from './components/DeveloperFilesViewer.tsx';
 
 // Primary tab components
@@ -42,9 +45,15 @@ import SettingsTab from './components/SettingsTab.tsx';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
+  const [userRole, setUserRole] = useState<'Super Admin' | 'Admin' | 'Manager' | 'Inventory Manager' | 'Customer Support'>('Administrator' as any);
   const [darkMode, setDarkMode] = useState<boolean>(false);
   const [isMobileOpen, setIsMobileOpen] = useState<boolean>(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState<boolean>(false);
+  const [isShortcutsOpen, setIsShortcutsOpen] = useState<boolean>(false);
+
+  // Global enterprise preferences
+  const [currency, setCurrency] = useState<string>('INR');
+  const [storeName, setStoreName] = useState<string>('Baskly Premium');
 
   // Central Shared Business state
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
@@ -71,12 +80,48 @@ export default function App() {
     }
   }, [darkMode]);
 
-  // Command palette hotkey handler (⌘K or Ctrl+K)
+  // Global Keyboard Shortcuts Controller
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      // 1. Modals escape closure (always allowed)
+      if (e.key === 'Escape') {
+        setIsCommandPaletteOpen(false);
+        setIsShortcutsOpen(false);
+        return;
+      }
+
+      // 2. Search & Command Palette (always allowed)
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         setIsCommandPaletteOpen(prev => !prev);
+        return;
+      }
+
+      // If user is actively typing in inputs or text fields, ignore other navigation shortcuts
+      const activeEl = document.activeElement;
+      const isTyping = activeEl && (
+        activeEl.tagName === 'INPUT' ||
+        activeEl.tagName === 'TEXTAREA' ||
+        activeEl.getAttribute('contenteditable') === 'true'
+      );
+      if (isTyping) return;
+
+      // 3. Show/hide keyboard shortcuts directory (? or Shift+?)
+      if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
+        e.preventDefault();
+        setIsShortcutsOpen(prev => !prev);
+        return;
+      }
+
+      // 4. Tab selection via quick Alt keys (Alt + Num/Key)
+      if (e.altKey) {
+        if (e.key === '1') { e.preventDefault(); setActiveTab('dashboard'); }
+        else if (e.key === '2') { e.preventDefault(); setActiveTab('products'); }
+        else if (e.key === '3') { e.preventDefault(); setActiveTab('categories'); }
+        else if (e.key === '4') { e.preventDefault(); setActiveTab('hampers'); }
+        else if (e.key === '5') { e.preventDefault(); setActiveTab('orders'); }
+        else if (e.key === '6') { e.preventDefault(); setActiveTab('shipping'); }
+        else if (e.key.toLowerCase() === 's') { e.preventDefault(); setActiveTab('settings'); }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -93,12 +138,34 @@ export default function App() {
       id: `act-${Date.now()}`,
       action,
       user: 'virajptl00@gmail.com',
-      role: 'Administrator',
+      role: userRole,
       timestamp: new Date().toISOString(),
       target,
       category
     };
     setActivityLogs(prev => [freshLog, ...prev]);
+  };
+
+  // Handler to simulate new inbound checkout transactions
+  const handleSimulateOrder = () => {
+    const newOrder = generateMockOrder(products, customers, orders.length);
+    setOrders(prev => [newOrder, ...prev]);
+    
+    // Deplete inventory of ordered items
+    setProducts(prevProducts => prevProducts.map(p => {
+      const orderItem = newOrder.items.find(item => item.productId === p.id);
+      if (orderItem) {
+        const newInv = Math.max(0, p.inventory - orderItem.quantity);
+        return { ...p, inventory: newInv };
+      }
+      return p;
+    }));
+
+    handleLogActivity(
+      `Inbound checkout simulated: ${newOrder.id} placed by ${newOrder.customer.name} (Amount: ₹${newOrder.amount})`,
+      'Order',
+      newOrder.id
+    );
   };
 
   // Switch dynamic viewport display area
@@ -112,6 +179,9 @@ export default function App() {
             ndrCases={ndrCases}
             customers={customers}
             onNavigate={(id) => setActiveTab(id)}
+            currency={currency}
+            storeName={storeName}
+            onSimulateOrder={handleSimulateOrder}
           />
         );
       case 'products':
@@ -120,7 +190,9 @@ export default function App() {
             products={products}
             setProducts={setProducts}
             labCertificates={labCertificates}
+            userRole={userRole}
             onLogActivity={handleLogActivity}
+            currency={currency}
           />
         );
       case 'categories':
@@ -128,6 +200,7 @@ export default function App() {
           <CategoriesTab
             categories={categories}
             setCategories={setCategories}
+            userRole={userRole}
             onLogActivity={handleLogActivity}
           />
         );
@@ -136,7 +209,10 @@ export default function App() {
           <OrdersTab
             orders={orders}
             setOrders={setOrders}
+            userRole={userRole}
             onLogActivity={handleLogActivity}
+            currency={currency}
+            storeName={storeName}
           />
         );
       case 'shipping':
@@ -144,6 +220,7 @@ export default function App() {
           <ShippingTab
             ndrCases={ndrCases}
             setNdrCases={setNdrCases}
+            userRole={userRole}
             onLogActivity={handleLogActivity}
           />
         );
@@ -152,6 +229,7 @@ export default function App() {
           <CustomersTab
             customers={customers}
             setCustomers={setCustomers}
+            userRole={userRole}
             onLogActivity={handleLogActivity}
           />
         );
@@ -160,6 +238,7 @@ export default function App() {
           <CouponsTab
             coupons={coupons}
             setCoupons={setCoupons}
+            userRole={userRole}
             onLogActivity={handleLogActivity}
           />
         );
@@ -168,6 +247,7 @@ export default function App() {
           <CMSTab
             cmsPages={cmsPages}
             setCmsPages={setCmsPages}
+            userRole={userRole}
             onLogActivity={handleLogActivity}
           />
         );
@@ -177,7 +257,9 @@ export default function App() {
             hampers={giftHampers}
             setHampers={setHampers}
             products={products}
+            userRole={userRole}
             onLogActivity={handleLogActivity}
+            currency={currency}
           />
         );
       case 'certificates':
@@ -187,6 +269,7 @@ export default function App() {
             setLabCertificates={setLabCertificates}
             products={products}
             setProducts={setProducts}
+            userRole={userRole}
             onLogActivity={handleLogActivity}
           />
         );
@@ -195,15 +278,30 @@ export default function App() {
           <SuppliersTab
             suppliers={suppliers}
             setSuppliers={setSuppliers}
+            userRole={userRole}
             onLogActivity={handleLogActivity}
           />
         );
       case 'analytics':
-        return <AnalyticsTab />;
+        return (
+          <AnalyticsTab
+            products={products}
+            orders={orders}
+            customers={customers}
+            suppliers={suppliers}
+            currency={currency}
+          />
+        );
       case 'settings':
         return (
           <SettingsTab
+            userRole={userRole}
+            setUserRole={setUserRole as any}
             onLogActivity={handleLogActivity}
+            currency={currency}
+            setCurrency={setCurrency}
+            storeName={storeName}
+            setStoreName={setStoreName}
           />
         );
       case 'blueprints':
@@ -235,6 +333,8 @@ export default function App() {
           onSearchClick={() => setIsCommandPaletteOpen(true)}
           darkMode={darkMode}
           setDarkMode={setDarkMode}
+          userRole={userRole}
+          setUserRole={setUserRole}
           activityLogs={activityLogs}
         />
 
@@ -256,6 +356,25 @@ export default function App() {
           setIsCommandPaletteOpen(false);
         }}
       />
+
+      {/* Keyboard shortcuts modal directory */}
+      <KeyboardShortcutsModal
+        isOpen={isShortcutsOpen}
+        onClose={() => setIsShortcutsOpen(false)}
+      />
+
+      {/* Floating Tactical Hotkey Assistant Trigger */}
+      <button
+        onClick={() => setIsShortcutsOpen(true)}
+        className="fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-stone-900 text-stone-800 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-850 border border-stone-250 dark:border-stone-800 text-xs font-bold rounded-lg shadow-sm hover:shadow transition-all hover:scale-102 active:scale-98 select-none cursor-pointer"
+        title="Keyboard Shortcuts Help (?)"
+      >
+        <Keyboard className="h-4 w-4 text-indigo-600 dark:text-indigo-400 animate-pulse" />
+        <span className="flex items-center gap-1">
+          <span className="text-stone-600 dark:text-stone-300">Hotkeys</span>
+          <kbd className="px-1 py-0.5 bg-stone-100 dark:bg-stone-800 border-b border-stone-300 dark:border-stone-750 rounded text-[9px] font-mono text-stone-550 dark:text-stone-400">?</kbd>
+        </span>
+      </button>
 
     </div>
   );

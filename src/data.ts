@@ -63,8 +63,8 @@ export const INITIAL_PRODUCTS: Product[] = [
       'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&q=80&w=400'
     ],
     variants: [
-      { id: 'v-1-1', size: '1g', packaging: 'Crystal Vial', sku: 'KSH-MNG-SFN-01G', inventory: 80, lowStockThreshold: 10, price: 34.99 },
-      { id: 'v-1-2', size: '5g', packaging: 'Royal Brass Container', sku: 'KSH-MNG-SFN-05G', inventory: 62, lowStockThreshold: 5, price: 159.99 }
+      { id: 'v-1-1', size: '1g', packaging: 'Crystal Vial', sku: 'KSH-MNG-SFN-01G', inventory: 80, lowStockThreshold: 10, price: 34.99, costPrice: 14.50 },
+      { id: 'v-1-2', size: '5g', packaging: 'Royal Brass Container', sku: 'KSH-MNG-SFN-05G', inventory: 62, lowStockThreshold: 5, price: 159.99, costPrice: 65.00 }
     ],
     seoTitle: 'A++ Kashmir Mongra Saffron | Organic Culinary Grade Stigmas',
     seoDescription: 'Indulge in pure Organic Kashmir Saffron Grade 1. Unadulterated, pesticide-free, loaded with rich active crocin.',
@@ -76,7 +76,9 @@ export const INITIAL_PRODUCTS: Product[] = [
       { id: 'cert-2', name: 'NABL Pesticide-Free Analysis', uploadDate: '2026-03-01', expiryDate: '2026-12-01', status: 'Active', url: '#', version: 1 }
     ],
     updatedAt: '2026-06-15T18:30:00Z',
-    supplierId: 'sup-1'
+    supplierId: 'sup-1',
+    costPrice: 15.00,
+    shelfLife: '24 Months'
   },
   {
     id: 'prod-2',
@@ -94,8 +96,8 @@ export const INITIAL_PRODUCTS: Product[] = [
       'https://images.unsplash.com/photo-1587049352846-4a222e784d38?auto=format&fit=crop&q=80&w=400'
     ],
     variants: [
-      { id: 'v-2-1', size: '250g', packaging: 'Glass Jar', sku: 'HML-CDR-HNY-250G', inventory: 11, lowStockThreshold: 10, price: 18.00 },
-      { id: 'v-2-2', size: '500g', packaging: 'Glass Jar', sku: 'HML-CDR-HNY-500G', inventory: 0, lowStockThreshold: 10, price: 32.00 }
+      { id: 'v-2-1', size: '250g', packaging: 'Glass Jar', sku: 'HML-CDR-HNY-250G', inventory: 11, lowStockThreshold: 10, price: 18.00, costPrice: 8.00 },
+      { id: 'v-2-2', size: '500g', packaging: 'Glass Jar', sku: 'HML-CDR-HNY-500G', inventory: 0, lowStockThreshold: 10, price: 32.00, costPrice: 14.00 }
     ],
     seoTitle: 'Raw Himalayan Cedar Honey | Mono-floral Forest Nectar',
     seoDescription: 'Experience medicinal grade dark forest honey sourced responsibly from the upper Himalayan ranges.',
@@ -106,7 +108,9 @@ export const INITIAL_PRODUCTS: Product[] = [
       { id: 'cert-3', name: 'FSSAI Heavy Metal Organic Verification', uploadDate: '2025-11-20', expiryDate: '2026-11-20', status: 'Active', url: '#', version: 1 }
     ],
     updatedAt: '2026-06-14T11:00:00Z',
-    supplierId: 'sup-2'
+    supplierId: 'sup-2',
+    costPrice: 8.50,
+    shelfLife: '18 Months'
   },
   {
     id: 'prod-3',
@@ -131,7 +135,9 @@ export const INITIAL_PRODUCTS: Product[] = [
     hsnCode: '04090000',
     certificates: [],
     updatedAt: '2026-06-10T09:00:00Z',
-    supplierId: 'sup-2'
+    supplierId: 'sup-2',
+    costPrice: 6.80,
+    shelfLife: '18 Months'
   },
   {
     id: 'prod-4',
@@ -158,7 +164,9 @@ export const INITIAL_PRODUCTS: Product[] = [
       { id: 'cert-4', name: 'Agmark Extra Virgin Conformity', uploadDate: '2024-05-18', expiryDate: '2025-05-18', status: 'Expired', url: '#', version: 1 }
     ],
     updatedAt: '2026-06-02T13:42:00Z',
-    supplierId: 'sup-1'
+    supplierId: 'sup-1',
+    costPrice: 11.20,
+    shelfLife: '12 Months'
   },
   {
     id: 'prod-5',
@@ -182,7 +190,9 @@ export const INITIAL_PRODUCTS: Product[] = [
     shippingDimensions: { length: 30, width: 20, height: 12 },
     hsnCode: '44201100',
     certificates: [],
-    updatedAt: '2026-06-15T20:10:00Z'
+    updatedAt: '2026-06-15T20:10:00Z',
+    costPrice: 28.00,
+    shelfLife: '12 Months'
   }
 ];
 
@@ -204,7 +214,8 @@ export const INITIAL_CUSTOMERS: Customer[] = [
     couponsUsed: [
       { code: 'VIPFESTIVE', date: '2025-10-22', saving: 50.00 },
       { code: 'WELCOME10', date: '2025-02-15', saving: 15.00 }
-    ]
+    ],
+    membershipTier: 'Platinum'
   },
   {
     id: 'cust-2',
@@ -219,7 +230,8 @@ export const INITIAL_CUSTOMERS: Customer[] = [
     savedAddresses: [
       { id: 'add-2-1', label: 'Home', street: 'Flat 402, Sea Breeze Apts, Worli Seaface', city: 'Mumbai', state: 'Maharashtra', zip: '400030' }
     ],
-    couponsUsed: []
+    couponsUsed: [],
+    membershipTier: 'Gold'
   },
   {
     id: 'cust-3',
@@ -234,7 +246,8 @@ export const INITIAL_CUSTOMERS: Customer[] = [
     savedAddresses: [
       { id: 'add-3-1', label: 'Home', street: '12, Crescent Orchard, Jayanagar 4th Block', city: 'Bangalore', state: 'Karnataka', zip: '560011' }
     ],
-    couponsUsed: [{ code: 'FREESHIP', date: '2026-01-10', saving: 8.00 }]
+    couponsUsed: [{ code: 'FREESHIP', date: '2026-01-10', saving: 8.00 }],
+    membershipTier: 'Silver'
   },
   {
     id: 'cust-4',
@@ -249,7 +262,8 @@ export const INITIAL_CUSTOMERS: Customer[] = [
     savedAddresses: [
       { id: 'add-4-1', label: 'Duplex', street: '74, Gulmohar Enclave, Greater Kailash-II', city: 'New Delhi', state: 'Delhi', zip: '110048' }
     ],
-    couponsUsed: []
+    couponsUsed: [],
+    membershipTier: 'Regular'
   }
 ];
 

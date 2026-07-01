@@ -1,17 +1,20 @@
-# Baskly Store Console
+<div align="center">
+<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
+</div>
 
-A Shopify-style SaaS administration dashboard for e-commerce, supporting Products, Orders, Shipping, CRM, Gift Hampers, Lab Certificates, and Analytics with Dark Mode.
+# Run and deploy your AI Studio app
+
+This contains everything you need to run your app locally.
+
+View your app in AI Studio: https://ai.studio/apps/96a530a2-f5f4-4446-9926-9d64a37a1be6
 
 ## Run Locally
 
-**Prerequisites:** Node.js
+**Prerequisites:**  Node.js
+
 
 1. Install dependencies:
-   ```bash
-   npm install
-   ```
-2. Set environment variables in `.env.local` based on `.env.example` if required.
+   `npm install`
+2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
 3. Run the app:
-   ```bash
-   npm run dev
-   ```
+   `npm run dev`

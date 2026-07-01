@@ -7,18 +7,28 @@ import React, { useState } from 'react';
 import { Settings, Shield, Key, Database, RefreshCw, Smartphone, Webhook, Save, Server, Globe } from 'lucide-react';
 
 interface SettingsTabProps {
+  userRole: string;
+  setUserRole: (role: string) => void;
   onLogActivity: (action: string, category: 'Product' | 'Order' | 'Customer' | 'Settings' | 'CMS' | 'Coupon', target: string) => void;
+  currency: string;
+  setCurrency: (currency: string) => void;
+  storeName: string;
+  setStoreName: (name: string) => void;
 }
 
 export default function SettingsTab({
-  onLogActivity
+  userRole,
+  setUserRole,
+  onLogActivity,
+  currency,
+  setCurrency,
+  storeName,
+  setStoreName
 }: SettingsTabProps) {
-  const [storeName, setStoreName] = useState('Baskly Premium');
-  const [currency, setCurrency] = useState('INR');
   const [webhookUrl, setWebhookUrl] = useState('https://api.baskly.com/v1/shiprocket-relay');
   const [isSaving, setIsSaving] = useState(false);
 
-  const isReadOnly = false;
+  const isReadOnly = userRole === 'Customer Support' || userRole === 'Inventory Manager';
 
   const handleSaveConfigs = () => {
     if (isReadOnly) return;
@@ -53,8 +63,8 @@ export default function SettingsTab({
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 font-semibold">
         
-        {/* General & Webhooks */}
-        <div className="md:col-span-3 space-y-6 max-w-4xl">
+        {/* Left Column: General & Webhooks */}
+        <div className="md:col-span-2 space-y-6">
           
           {/* General Metadata */}
           <div className="bg-white rounded-xl border border-stone-200 p-5 space-y-4 shadow-3xs">
@@ -142,6 +152,43 @@ export default function SettingsTab({
             </div>
           </div>
 
+        </div>
+
+        {/* Right Column: RBAC selector list */}
+        <div className="md:col-span-1">
+          <div className="bg-white rounded-xl border border-stone-200 p-5 space-y-5 shadow-3xs bg-[#f4f7f6]/40">
+            <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest border-b pb-2 flex items-center gap-1">
+              <Shield className="h-4 w-4 text-stone-400" /> System RBAC Roles Management
+            </p>
+
+            <div className="space-y-2 text-xs">
+              <p className="font-medium text-stone-500 leading-normal text-[11px] mb-3">
+                Switching roles here modifies action locks and restricts dashboard editing boundaries across tabs simulated dynamically!
+              </p>
+
+              {(['Administrator', 'Inventory Manager', 'Customer Support'] as const).map((role) => (
+                <div
+                  key={role}
+                  onClick={() => {
+                    setUserRole(role);
+                    onLogActivity(`Switched security profile to role "${role}"`, 'Settings', 'RBAC_Role');
+                  }}
+                  className={`p-3 border rounded-xl cursor-pointer transition-all flex items-center justify-between ${
+                    userRole === role
+                      ? 'bg-white border-[#008060] shadow-2xs text-[#008060]'
+                      : 'bg-white border-stone-200 hover:border-stone-400 text-stone-700'
+                  }`}
+                >
+                  <div>
+                    <span className="font-bold text-xs block leading-none">{role}</span>
+                    <span className="text-[9px] text-stone-400 mt-1 block">
+                      {role === 'Administrator' ? 'Unrestricted root security keys privileges.' : role === 'Inventory Manager' ? 'Locks customer accounts, allows stock adjustments.' : 'Locks stock configurations, read customer CRM.'}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
       </div>

@@ -10,19 +10,21 @@ import { Category } from '../types.ts';
 interface CategoriesTabProps {
   categories: Category[];
   setCategories: React.Dispatch<React.SetStateAction<Category[]>>;
+  userRole: string; // for RBAC
   onLogActivity: (action: string, category: 'Product' | 'Order' | 'Customer' | 'Settings' | 'CMS' | 'Coupon', target: string) => void;
 }
 
 export default function CategoriesTab({
   categories,
   setCategories,
+  userRole,
   onLogActivity
 }: CategoriesTabProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [form, setForm] = useState<Partial<Category>>({});
 
-  const isReadOnly = false;
+  const isReadOnly = userRole === 'Customer Support';
 
   const startEdit = (cat: Category) => {
     setForm({ ...cat });

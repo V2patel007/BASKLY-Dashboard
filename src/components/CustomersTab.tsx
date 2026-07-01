@@ -31,12 +31,14 @@ import { Customer } from '../types.ts';
 interface CustomersTabProps {
   customers: Customer[];
   setCustomers: React.Dispatch<React.SetStateAction<Customer[]>>;
+  userRole: string;
   onLogActivity: (action: string, category: 'Product' | 'Order' | 'Customer' | 'Settings' | 'CMS' | 'Coupon', target: string) => void;
 }
 
 export default function CustomersTab({
   customers,
   setCustomers,
+  userRole,
   onLogActivity
 }: CustomersTabProps) {
   const [selectedCustId, setSelectedCustId] = useState<string | null>(null);
@@ -498,6 +500,7 @@ export default function CustomersTab({
                     <th className="py-2.5 px-4">Client Profile</th>
                     <th className="py-2.5 px-4 text-center font-normal">Checkout count</th>
                     <th className="py-2.5 px-4 text-right font-normal">Lifetime value (LTV)</th>
+                    <th className="py-2.5 px-4 text-center">Membership Tier</th>
                     <th className="py-2.5 px-4">Segment tags</th>
                     <th className="py-2.5 px-4">Joined Date</th>
                     <th className="py-2.5 px-4 text-center font-normal">Actions</th>
@@ -506,7 +509,7 @@ export default function CustomersTab({
                 <tbody className="divide-y divide-[#f1f1f1]">
                   {filteredCustomers.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-12 text-center text-stone-400 font-medium">
+                      <td colSpan={7} className="py-12 text-center text-stone-400 font-medium">
                         No clients matching your search or segment query parameters. Try resetting your filter buttons above.
                       </td>
                     </tr>
@@ -526,6 +529,21 @@ export default function CustomersTab({
                         </td>
                         <td className="py-3 px-4 text-center font-bold text-stone-700">{c.ordersCount} transactions</td>
                         <td className="py-3 px-4 text-right font-bold text-stone-950">₹{c.lifetimeValue.toFixed(2)}</td>
+                        <td className="py-3 px-4 text-center">
+                          {(() => {
+                            const tier = c.membershipTier || 'Regular';
+                            const colors = 
+                              tier === 'Platinum' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                              tier === 'Gold' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                              tier === 'Silver' ? 'bg-slate-50 text-slate-700 border-slate-200' :
+                              'bg-stone-50 text-stone-700 border-stone-200';
+                            return (
+                              <span className={`inline-block text-[9px] font-mono font-bold px-2 py-0.5 rounded border ${colors}`}>
+                                {tier.toUpperCase()}
+                              </span>
+                            );
+                          })()}
+                        </td>
                         <td className="py-3 px-4">
                           <div className="flex gap-1 flex-wrap">
                             {c.tags.map((t, idx) => {
@@ -635,6 +653,186 @@ export default function CustomersTab({
                     <p className="flex items-center gap-2 select-text"><Mail className="h-4 w-4 text-stone-400 shrink-0" /> {activeCustomer.email}</p>
                     <p className="flex items-center gap-2 select-text"><Phone className="h-4 w-4 text-stone-400 shrink-0" /> {activeCustomer.phone}</p>
                   </div>
+                </div>
+
+                {/* Membership Update Card */}
+                <div className="border border-[#d2d2d2] p-5 rounded-md space-y-3 shadow-sm bg-stone-50/50">
+                  <div className="flex items-center gap-1.5 text-[10px] text-indigo-700 font-bold uppercase tracking-widest">
+                    <Award className="h-4 w-4" /> CRM Membership Status
+                  </div>
+                  <p className="text-[10px] text-stone-400 font-medium leading-snug">
+                    Update client's loyalty and membership status. This influences automatic discounts, loyalty tier rewards, and priority support rules across Baskly.
+                  </p>
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] font-bold text-stone-500 uppercase tracking-wide">Membership Loyalty Level</label>
+                    <select
+                      value={activeCustomer.membershipTier || 'Regular'}
+                      onChange={(e) => {
+                        const newTier = e.target.value as any;
+                        setCustomers(prev => prev.map(cust => {
+                          if (cust.id === activeCustomer.id) {
+                            return { ...cust, membershipTier: newTier };
+                          }
+                          return cust;
+                        }));
+                        onLogActivity(`Updated ${activeCustomer.name} membership tier to ${newTier}`, 'Customer', activeCustomer.name);
+                      }}
+                      className="w-full text-xs font-semibold px-2 py-1.5 border border-[#d2d2d2] bg-white rounded-md focus:outline-none focus:border-indigo-500"
+                    >
+                      <option value="Regular">Regular Member</option>
+                      <option value="Silver">Silver Royalty Tier</option>
+                      <option value="Gold">Gold VIP Royalty Tier</option>
+                      <option value="Platinum">Platinum Executive Tier</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* LOYALTY TIER BENEFITS AUTO-CALCULATOR CARD */}
+                <div className="border border-[#d2d2d2] p-5 rounded-md space-y-4 shadow-sm bg-gradient-to-br from-indigo-50/50 to-purple-50/40">
+                  <div className="flex items-center justify-between border-b border-indigo-100 pb-2">
+                    <span className="flex items-center gap-1.5 text-[10px] text-purple-700 font-bold uppercase tracking-widest">
+                      <Sparkles className="h-4 w-4 text-purple-500 animate-pulse" /> Tier Benefits Engine
+                    </span>
+                    <span className="text-[9px] bg-purple-100 border border-purple-200 px-1.5 py-0.5 rounded font-mono text-purple-700 font-bold">
+                      Calculated Live
+                    </span>
+                  </div>
+
+                  {/* Calculations */}
+                  {(() => {
+                    const tier = activeCustomer.membershipTier || 'Regular';
+                    const ltv = activeCustomer.lifetimeValue;
+
+                    // Multipliers and perks config
+                    const discountPct = 
+                      tier === 'Platinum' ? 15 :
+                      tier === 'Gold' ? 10 :
+                      tier === 'Silver' ? 5 : 
+                      0;
+
+                    const pointMultiplier = 
+                      tier === 'Platinum' ? 3.0 :
+                      tier === 'Gold' ? 2.0 :
+                      tier === 'Silver' ? 1.5 : 
+                      1.0;
+
+                    const activePerk = 
+                      tier === 'Platinum' ? 'Free express air delivery, concierge support & premium saffron wood case gift.' :
+                      tier === 'Gold' ? 'Free express air delivery, VIP dedicate call desk access.' :
+                      tier === 'Silver' ? 'Free standard delivery, high-priority support responder.' :
+                      'Standard shipping and support desk queue.';
+
+                    // Savings calculation
+                    const savingsAmount = ltv * (discountPct / 100);
+                    const loyaltyPoints = ltv * pointMultiplier;
+
+                    // Tier progression criteria
+                    // Regular -> Silver (10k), Silver -> Gold (35k), Gold -> Platinum (100k)
+                    let nextTierName = '';
+                    let threshold = 0;
+                    if (tier === 'Regular') {
+                      nextTierName = 'Silver';
+                      threshold = 10000;
+                    } else if (tier === 'Silver') {
+                      nextTierName = 'Gold';
+                      threshold = 35000;
+                    } else if (tier === 'Gold') {
+                      nextTierName = 'Platinum';
+                      threshold = 100000;
+                    }
+
+                    const progressPct = threshold > 0 ? Math.min((ltv / threshold) * 100, 100) : 100;
+                    const canPromote = threshold > 0 && ltv >= threshold;
+
+                    return (
+                      <div className="space-y-3.5 text-xs">
+                        
+                        {/* Benefits breakdown */}
+                        <div className="grid grid-cols-2 gap-2.5">
+                          <div className="bg-white p-2.5 rounded border border-stone-200">
+                            <p className="text-[8px] text-stone-400 font-bold uppercase tracking-wider">Dynamic Discount</p>
+                            <p className="text-sm font-black text-indigo-950 font-mono mt-0.5">{discountPct}% Off</p>
+                            <p className="text-[9px] text-stone-500 font-medium">Automatic at checkout</p>
+                          </div>
+                          <div className="bg-white p-2.5 rounded border border-[#d2d2d2]">
+                            <p className="text-[8px] text-stone-400 font-bold uppercase tracking-wider">Estimated Savings</p>
+                            <p className="text-sm font-black text-emerald-700 font-mono mt-0.5">₹{savingsAmount.toFixed(2)}</p>
+                            <p className="text-[9px] text-stone-500 font-medium">LTV-based cashback</p>
+                          </div>
+                        </div>
+
+                        {/* Point engine and active perks */}
+                        <div className="space-y-1 bg-white p-3 rounded border border-indigo-100/80">
+                          <div className="flex justify-between items-center text-[9px] font-bold text-indigo-900 uppercase">
+                            <span>Baskly Loyalty Points</span>
+                            <span className="font-mono bg-indigo-50 text-indigo-700 px-1 py-0.5 rounded border border-indigo-100">{pointMultiplier}x Multiplier</span>
+                          </div>
+                          <p className="text-sm font-black text-indigo-950 font-mono">
+                            {Math.round(loyaltyPoints).toLocaleString()} pts
+                          </p>
+                          <div className="pt-2 border-t border-indigo-50 mt-1.5">
+                            <span className="text-[8px] text-stone-400 font-bold uppercase tracking-wider block">Exclusive Tier Perk</span>
+                            <p className="text-[10px] text-stone-605 font-semibold leading-normal mt-0.5">
+                              {activePerk}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Progression bar */}
+                        {threshold > 0 ? (
+                          <div className="space-y-1.5 pt-1.5">
+                            <div className="flex justify-between items-center text-[9px] font-bold text-stone-500 uppercase tracking-wide">
+                              <span>Next Level: {nextTierName.toUpperCase()}</span>
+                              <span className="font-mono text-stone-900">₹{ltv.toFixed(0)} / ₹{threshold.toLocaleString()}</span>
+                            </div>
+                            <div className="h-2 w-full bg-stone-200 rounded-full overflow-hidden">
+                              <div 
+                                className="h-full bg-purple-600 rounded-full transition-all duration-500"
+                                style={{ width: `${progressPct}%` }}
+                              />
+                            </div>
+                            
+                            {/* Auto promote notification if LTV qualifies but tier is lower */}
+                            {canPromote ? (
+                              <div className="bg-amber-50 border border-amber-200 p-2 rounded flex flex-col gap-1.5 mt-2">
+                                <p className="text-[9px] text-amber-800 font-extrabold flex items-center gap-1">
+                                  <Award className="h-3.5 w-3.5 text-amber-600" /> ELIGIBLE FOR {nextTierName.toUpperCase()} UPGRADE
+                                </p>
+                                <p className="text-[9px] text-stone-500 font-medium">
+                                  Customer's high purchase volume qualifies for automatic tier promotion!
+                                </p>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setCustomers(prev => prev.map(cust => {
+                                      if (cust.id === activeCustomer.id) {
+                                        return { ...cust, membershipTier: nextTierName as any };
+                                      }
+                                      return cust;
+                                    }));
+                                    onLogActivity(`Automatically promoted ${activeCustomer.name} to ${nextTierName} Tier`, 'Customer', activeCustomer.name);
+                                  }}
+                                  className="w-full text-[9px] bg-purple-700 hover:bg-purple-800 text-white font-extrabold py-1 rounded transition-colors cursor-pointer text-center"
+                                >
+                                  Auto-Upgrade to {nextTierName} Tier
+                                </button>
+                              </div>
+                            ) : (
+                              <p className="text-[9px] text-stone-400 italic">
+                                Needs ₹{(threshold - ltv).toFixed(0)} more LTV to qualify for automatic {nextTierName} promotion.
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="bg-indigo-50 border border-indigo-100 p-2.5 rounded text-center">
+                            <p className="text-[10px] text-indigo-800 font-extrabold uppercase">👑 Platinum Member Status Achieved</p>
+                            <p className="text-[9px] text-stone-500 mt-0.5 font-medium">This customer has reached the highest lifetime executive tier!</p>
+                          </div>
+                        )}
+
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Financial overview LTV */}

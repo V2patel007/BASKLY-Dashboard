@@ -13,6 +13,7 @@ export interface Variant {
   inventory: number;
   lowStockThreshold: number;
   price: number;
+  costPrice?: number;
 }
 
 export interface InventoryHistory {
@@ -57,6 +58,9 @@ export interface Product {
   certificates: LabCertificateMapping[];
   updatedAt: string;
   supplierId?: string;
+  costPrice?: number;
+  shelfLife?: string;
+  wholesaleTiers?: { moq: number; discount: number; suggestedPrice: number }[];
 }
 
 export interface Category {
@@ -131,7 +135,7 @@ export interface Order {
   taxAmount: number;
   shippingAmount: number;
   paymentStatus: 'Paid' | 'Pending' | 'Refunded' | 'Failed';
-  fulfillmentStatus: 'Unfulfilled' | 'Fulfilled' | 'Shipped' | 'Delivered' | 'Cancelled';
+  fulfillmentStatus: 'Unfulfilled' | 'Fulfilled' | 'Ready to Ship' | 'Shipped' | 'Delivered' | 'Cancelled';
   date: string;
   shiprocket?: ShiprocketDetails;
   notes?: string;
@@ -159,6 +163,7 @@ export interface Customer {
   ordersCount: number;
   savedAddresses: SavedAddress[];
   couponsUsed: { code: string; date: string; saving: number }[];
+  membershipTier?: 'Regular' | 'Silver' | 'Gold' | 'Platinum';
 }
 
 export interface Coupon {

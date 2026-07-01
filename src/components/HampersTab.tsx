@@ -6,19 +6,24 @@
 import React, { useState } from 'react';
 import { Package, Plus, Trash2, Heart, Gift, Sparkles, MessageSquare } from 'lucide-react';
 import { GiftHamper, Product } from '../types.ts';
+import { formatPrice } from '../utils.ts';
 
 interface HampersTabProps {
   hampers: GiftHamper[];
   setHampers: React.Dispatch<React.SetStateAction<GiftHamper[]>>;
   products: Product[];
+  userRole: string; // RBAC
   onLogActivity: (action: string, category: 'Product' | 'Order' | 'Customer' | 'Settings' | 'CMS' | 'Coupon', target: string) => void;
+  currency: string;
 }
 
 export default function HampersTab({
   hampers,
   setHampers,
   products,
-  onLogActivity
+  userRole,
+  onLogActivity,
+  currency
 }: HampersTabProps) {
   const [isCreating, setIsCreating] = useState(false);
   const [hamperName, setHamperName] = useState('');
@@ -30,7 +35,7 @@ export default function HampersTab({
   const [addpId, setAddpId] = useState('');
   const [addQty, setAddQty] = useState(1);
 
-  const isReadOnly = false;
+  const isReadOnly = userRole === 'Customer Support';
 
   // Math totals calculation
   const aggregatedBasePrice = bundleProducts.reduce((sum, bp) => {
@@ -166,7 +171,7 @@ export default function HampersTab({
                   >
                     <option value="">Select product item to append...</option>
                     {products.map(p => (
-                      <option key={p.id} value={p.id}>{p.name} (₹{p.price})</option>
+                      <option key={p.id} value={p.id}>{p.name} ({formatPrice(p.price, currency)})</option>
                     ))}
                   </select>
                   <input
@@ -224,22 +229,22 @@ export default function HampersTab({
               <div className="flex justify-between">
                 <span>Sum item costs</span>
                 <span className="font-mono text-stone-905 font-bold">
-                  ₹{(aggregatedBasePrice - (selectedPackaging === 'Premium Box' ? 10.0 : selectedPackaging === 'Festive Basket' ? 15.0 : 5.0)).toFixed(2)}
+                  {formatPrice(aggregatedBasePrice - (selectedPackaging === 'Premium Box' ? 10.0 : selectedPackaging === 'Festive Basket' ? 15.0 : 5.0), currency)}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span>Packaging ({selectedPackaging})</span>
                 <span className="font-mono text-stone-905">
-                  +₹{selectedPackaging === 'Premium Box' ? '10.00' : selectedPackaging === 'Festive Basket' ? '15.00' : '5.00'}
+                  +{formatPrice(selectedPackaging === 'Premium Box' ? 10.0 : selectedPackaging === 'Festive Basket' ? 15.0 : 5.0, currency)}
                 </span>
               </div>
               <div className="flex justify-between border-t border-dashed pt-2 font-bold select-none text-stone-900">
                 <span>Computed base bundle price</span>
-                <span className="font-mono font-black">₹{aggregatedBasePrice.toFixed(2)}</span>
+                <span className="font-mono font-black">{formatPrice(aggregatedBasePrice, currency)}</span>
               </div>
               <div className="flex justify-between text-emerald-800 bg-[#e2f1ec] px-2 py-1 rounded font-bold">
                 <span>Smart Bundle Sale Price (10% Off)</span>
-                <span className="font-mono font-extrabold">₹{(aggregatedBasePrice * 0.9).toFixed(2)}</span>
+                <span className="font-mono font-extrabold">{formatPrice(aggregatedBasePrice * 0.9, currency)}</span>
               </div>
             </div>
 
@@ -277,8 +282,8 @@ export default function HampersTab({
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="text-stone-405 font-mono text-xs font-semibold line-through">₹{ham.price.toFixed(2)}</span>
-                  <span className="text-[#008060] font-mono text-xs font-extrabold">₹{ham.discountedPrice.toFixed(2)}</span>
+                  <span className="text-stone-405 font-mono text-xs font-semibold line-through">{formatPrice(ham.price, currency)}</span>
+                  <span className="text-[#008060] font-mono text-xs font-extrabold">{formatPrice(ham.discountedPrice, currency)}</span>
                 </div>
               </div>
 

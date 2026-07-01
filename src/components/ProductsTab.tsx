@@ -25,22 +25,30 @@ import {
   Settings,
   Clock,
   Images,
-  History
+  History,
+  Calculator,
+  TrendingUp,
+  Percent
 } from 'lucide-react';
 import { Product, Variant, LabCertificateMapping } from '../types.ts';
+import { formatPrice } from '../utils.ts';
 
 interface ProductsTabProps {
   products: Product[];
   setProducts: React.Dispatch<React.SetStateAction<Product[]>>;
   labCertificates: LabCertificateMapping[];
+  userRole: string; // for RBAC controls
   onLogActivity: (action: string, category: 'Product' | 'Order' | 'Customer' | 'Settings' | 'CMS' | 'Coupon', target: string) => void;
+  currency: string;
 }
 
 export default function ProductsTab({
   products,
   setProducts,
   labCertificates,
-  onLogActivity
+  userRole,
+  onLogActivity,
+  currency
 }: ProductsTabProps) {
   // Navigation & Listing state
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -51,15 +59,24 @@ export default function ProductsTab({
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
 
   // RBAC checks
-  const isReadOnly = false;
+  const isReadOnly = userRole === 'Customer Support';
 
   // Editor states (binds to active product)
-  const [editorTab, setEditorTab] = useState<'general' | 'media' | 'variants' | 'inventory' | 'seo' | 'shipping' | 'certificates'>('general');
+  const [editorTab, setEditorTab] = useState<'general' | 'media' | 'variants' | 'inventory' | 'seo' | 'shipping' | 'certificates' | 'bulk-pricing'>('general');
   const [editForm, setEditForm] = useState<Partial<Product>>({});
   const [newVarSize, setNewVarSize] = useState('');
   const [newVarPrice, setNewVarPrice] = useState(0);
   const [newVarInv, setNewVarInv] = useState(1);
   const [dragActive, setDragActive] = useState(false);
+
+  // Interactive Wholesale / Bulk Pricing Calculator States
+  const [wholesaleTargetVolume, setWholesaleTargetVolume] = useState<number>(500); // units
+  const [wholesaleTier1Discount, setWholesaleTier1Discount] = useState<number>(10); // %
+  const [wholesaleTier2Discount, setWholesaleTier2Discount] = useState<number>(20); // %
+  const [wholesaleTier3Discount, setWholesaleTier3Discount] = useState<number>(35); // %
+  const [wholesaleTier1Moq, setWholesaleTier1Moq] = useState<number>(10); // MOQ
+  const [wholesaleTier2Moq, setWholesaleTier2Moq] = useState<number>(50); // MOQ
+  const [wholesaleTier3Moq, setWholesaleTier3Moq] = useState<number>(200); // MOQ
 
   // Filter list
   const filteredProducts = products.filter((p) => {
@@ -115,10 +132,13 @@ export default function ProductsTab({
   };
 
   const startCreate = () => {
+    const prodId = `prod-${Date.now()}`;
+    const randSuffix = Math.floor(100 + Math.random() * 900);
+    const initialSku = `KAS-PROD-${randSuffix}`;
     setEditingId('');
     setIsCreatingNew(true);
     setEditForm({
-      id: `prod-${Date.now()}`,
+      id: prodId,
       name: '',
       slug: '',
       shortDescription: '',
@@ -127,7 +147,7 @@ export default function ProductsTab({
       price: 0,
       inventory: 0,
       lowStockThreshold: 10,
-      sku: '',
+      sku: initialSku,
       status: 'Draft',
       images: ['https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&q=80&w=400'],
       variants: [],
@@ -349,8 +369,10 @@ export default function ProductsTab({
                     <th className="py-2.5 px-4">Product details</th>
                     <th className="py-2.5 px-4 font-normal">SKU Code</th>
                     <th className="py-2.5 px-4">Category</th>
+                    <th className="py-2.5 px-4 text-center">Shelf Life</th>
                     <th className="py-2.5 px-4 text-center">Inventory</th>
                     <th className="py-2.5 px-4 text-right">Selling Price</th>
+                    <th className="py-2.5 px-4 text-right">Marginal Rate</th>
                     <th className="py-2.5 px-4 text-center">Status</th>
                     <th className="py-2.5 px-4 text-center">Actions</th>
                   </tr>
@@ -358,7 +380,7 @@ export default function ProductsTab({
                 <tbody className="divide-y divide-[#f1f1f1] text-xs">
                   {filteredProducts.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="py-12 text-center text-stone-400 font-medium">
+                      <td colSpan={11} className="py-12 text-center text-stone-400 font-medium">
                         <AlertCircle className="h-8 w-8 mx-auto text-stone-300 mb-2" />
                         No matching e-commerce products for this search.
                       </td>
@@ -409,6 +431,9 @@ export default function ProductsTab({
                               {p.category}
                             </span>
                           </td>
+                          <td className="py-3 px-4 text-center text-stone-600 font-medium">
+                            {p.shelfLife || '12 Months'}
+                          </td>
                           <td className="py-3 px-4 text-center">
                             <span className={`inline-block font-bold font-mono px-2 py-0.5 rounded text-[10px] ${
                               totalInv === 0
@@ -421,7 +446,18 @@ export default function ProductsTab({
                             </span>
                           </td>
                           <td className="py-3 px-4 text-right font-bold text-stone-900">
-                            ₹{p.price.toFixed(2)}
+                            {formatPrice(p.price, currency)}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            {(() => {
+                              const cost = p.costPrice || (p.price * 0.4);
+                              const rate = ((p.price - cost) / p.price) * 100;
+                              return (
+                                <span className="inline-block font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded text-[10px] border border-emerald-200">
+                                  {rate.toFixed(1)}%
+                                </span>
+                              );
+                            })()}
                           </td>
                           <td className="py-3 px-4 text-center">
                             <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
@@ -492,7 +528,8 @@ export default function ProductsTab({
                 { id: 'inventory', label: 'Stock balance', icon: Clock },
                 { id: 'seo', label: 'SEO tags', icon: Globe },
                 { id: 'shipping', label: 'Carrier shipping', icon: Truck },
-                { id: 'certificates', label: 'Lab mappings', icon: Award }
+                { id: 'certificates', label: 'Lab mappings', icon: Award },
+                { id: 'bulk-pricing', label: 'Wholesale pricing', icon: Calculator }
               ].map((tab) => {
                 const Icon = tab.icon;
                 return (
@@ -529,14 +566,63 @@ export default function ProductsTab({
                       <input
                         type="text"
                         value={editForm.name || ''}
-                        onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                        onChange={(e) => {
+                          const newName = e.target.value;
+                          setEditForm(prev => {
+                            const catPrefix = (prev.category || 'GEN').substring(0, 3).toUpperCase();
+                            const nameClean = newName
+                              .replace(/[^a-zA-Z0-9]/g, '')
+                              .substring(0, 6)
+                              .toUpperCase();
+                            const suffix = prev.id ? prev.id.substring(prev.id.length - 3).toUpperCase() : '101';
+                            
+                            // If the SKU matches standard default templates, auto-update it with the clean title
+                            const isDefaultOrEmpty = !prev.sku || 
+                              prev.sku === '' || 
+                              prev.sku.startsWith('KAS-PROD-') || 
+                              prev.sku.startsWith(`${catPrefix}-PROD-`) ||
+                              prev.sku === `${catPrefix}-PROD-${suffix}`;
+
+                            const updatedSku = isDefaultOrEmpty && nameClean
+                              ? `${catPrefix}-${nameClean}-${suffix}`
+                              : (prev.sku || `${catPrefix}-PROD-${suffix}`);
+
+                            return {
+                              ...prev,
+                              name: newName,
+                              sku: updatedSku,
+                              slug: !prev.slug || prev.slug === '' || prev.slug === prev.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+                                ? newName.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+                                : prev.slug
+                            };
+                          });
+                        }}
                         placeholder="e.g. Kashmir Lacha Saffron"
                         className="w-full text-xs font-semibold px-3 py-2 border border-stone-200 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-[#008060]"
                         disabled={isReadOnly}
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wide font-mono">Internal SKU</label>
+                      <div className="flex justify-between items-center">
+                        <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wide font-mono">Internal SKU</label>
+                        {!isReadOnly && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const catPrefix = (editForm.category || 'GEN').substring(0, 3).toUpperCase();
+                              const nameClean = (editForm.name || 'PROD')
+                                .replace(/[^a-zA-Z0-9]/g, '')
+                                .substring(0, 6)
+                                .toUpperCase();
+                              const randomSuffix = Math.floor(100 + Math.random() * 900);
+                              setEditForm(prev => ({ ...prev, sku: `${catPrefix}-${nameClean}-${randomSuffix}` }));
+                            }}
+                            className="text-[9px] font-bold text-[#008060] bg-[#e2f1ec] px-1.5 py-0.5 rounded hover:bg-[#c9e7dd] transition-colors"
+                          >
+                            Auto Gen SKU
+                          </button>
+                        )}
+                      </div>
                       <input
                         type="text"
                         value={editForm.sku || ''}
@@ -607,6 +693,51 @@ export default function ProductsTab({
                         className="w-full text-xs font-semibold px-3 py-2 border border-stone-200 bg-white rounded-lg focus:outline-none"
                         disabled={isReadOnly}
                       />
+                    </div>
+                  </div>
+
+                  {/* SHELF LIFE AND COST PRICE BREAKDOWN SECTION */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-dashed border-stone-200">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">Cost Price (₹)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={editForm.costPrice || ''}
+                        onChange={(e) => setEditForm({ ...editForm, costPrice: e.target.value ? parseFloat(e.target.value) : undefined })}
+                        placeholder="Merchant cost"
+                        className="w-full text-xs font-semibold px-3 py-2 border border-stone-200 bg-white rounded-lg focus:outline-none"
+                        disabled={isReadOnly}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">Shelf Life</label>
+                      <input
+                        type="text"
+                        value={editForm.shelfLife || ''}
+                        onChange={(e) => setEditForm({ ...editForm, shelfLife: e.target.value })}
+                        placeholder="e.g. 18 Months"
+                        className="w-full text-xs font-semibold px-3 py-2 border border-stone-200 bg-white rounded-lg focus:outline-none"
+                        disabled={isReadOnly}
+                      />
+                    </div>
+                    <div className="bg-[#fcfdfc] p-2.5 rounded-lg border border-emerald-100 flex flex-col justify-between">
+                      <p className="text-[9px] font-bold text-emerald-800 uppercase tracking-wide">Calculated Margin</p>
+                      {(() => {
+                        const price = editForm.price || 0;
+                        const cost = editForm.costPrice || 0;
+                        if (price > 0 && cost > 0) {
+                          const marginAmt = price - cost;
+                          const marginPct = (marginAmt / price) * 100;
+                          return (
+                            <div>
+                              <p className="text-sm font-bold text-emerald-950 font-mono">₹{marginAmt.toFixed(2)}</p>
+                              <p className="text-[9px] text-emerald-600 font-bold">{marginPct.toFixed(1)}% Marginal Rate</p>
+                            </div>
+                          );
+                        }
+                        return <p className="text-[10px] text-stone-400 italic">Enter price & cost to calculate margin</p>;
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -855,11 +986,53 @@ export default function ProductsTab({
                       {editForm.seoTitle || editForm.name || 'Title Placeholder'}
                     </p>
                     <p className="text-[#006621] text-[10px] break-all">
-                      https://aarnagourmet.com/products/{editForm.slug || 'slug-placeholder'}
+                      https://baskly.com/products/{editForm.slug || 'slug-placeholder'}
                     </p>
                     <p className="text-stone-600 text-[11px] leading-snug">
                       {editForm.seoDescription || editForm.shortDescription || 'Search snippets will show here. Configure details above.'}
                     </p>
+                  </div>
+
+                  {/* OG Image / Social Cover section */}
+                  <div className="space-y-3 pt-3 border-t border-dashed border-stone-200">
+                    <div className="flex justify-between items-center">
+                      <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">Social Sharing OG Cover Image (OpenGraph)</label>
+                      <label className="inline-flex items-center gap-1.5 text-[10px] font-bold text-[#008060] cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={!editForm.ogImage || editForm.ogImage === (editForm.images && editForm.images[0])}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setEditForm(prev => ({ ...prev, ogImage: prev.images && prev.images[0] }));
+                            } else {
+                              setEditForm(prev => ({ ...prev, ogImage: (prev.images && prev.images[0]) || '' }));
+                            }
+                          }}
+                          className="rounded text-[#008060] focus:ring-[#008060]"
+                        />
+                        Same image as cover image
+                      </label>
+                    </div>
+                    <div className="flex gap-3">
+                      <div className="grow">
+                        <input
+                          type="text"
+                          value={editForm.ogImage || ''}
+                          onChange={(e) => setEditForm({ ...editForm, ogImage: e.target.value })}
+                          placeholder="https://example.com/social-cover.jpg"
+                          className="w-full text-xs font-semibold px-3 py-2 border border-stone-200 bg-white rounded-lg focus:outline-none disabled:bg-stone-100 disabled:text-stone-400"
+                          disabled={isReadOnly || (!editForm.ogImage || editForm.ogImage === (editForm.images && editForm.images[0]))}
+                        />
+                      </div>
+                      <div className="h-9 w-12 border border-stone-200 bg-stone-50 rounded overflow-hidden shrink-0">
+                        <img
+                          src={editForm.ogImage || (editForm.images && editForm.images[0]) || 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&q=80&w=40'}
+                          alt="Cover preview"
+                          className="h-full w-full object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -989,6 +1162,383 @@ export default function ProductsTab({
                   </div>
                 </div>
               )}
+
+              {/* TAB 8: BULK PRICING & WHOLESALE TIER CALCULATOR */}
+              {editorTab === 'bulk-pricing' && (() => {
+                const regularPrice = editForm.price || 0;
+                const unitCost = editForm.costPrice || (regularPrice * 0.45);
+                const isDerivedCost = !editForm.costPrice || editForm.costPrice === 0;
+
+                const currentUnitProfit = Math.max(0, regularPrice - unitCost);
+                const currentMarginPct = regularPrice > 0 ? (currentUnitProfit / regularPrice) * 100 : 0;
+
+                // Tier 1 calculation
+                const tier1Price = regularPrice * (1 - wholesaleTier1Discount / 100);
+                const tier1Profit = Math.max(0, tier1Price - unitCost);
+                const tier1MarginPct = tier1Price > 0 ? (tier1Profit / tier1Price) * 100 : 0;
+                const tier1ProjectedProfit = tier1Profit * wholesaleTargetVolume;
+                const tier1ProjectedRevenue = tier1Price * wholesaleTargetVolume;
+
+                // Tier 2 calculation
+                const tier2Price = regularPrice * (1 - wholesaleTier2Discount / 100);
+                const tier2Profit = Math.max(0, tier2Price - unitCost);
+                const tier2MarginPct = tier2Price > 0 ? (tier2Profit / tier2Price) * 100 : 0;
+                const tier2ProjectedProfit = tier2Profit * wholesaleTargetVolume;
+                const tier2ProjectedRevenue = tier2Price * wholesaleTargetVolume;
+
+                // Tier 3 calculation
+                const tier3Price = regularPrice * (1 - wholesaleTier3Discount / 100);
+                const tier3Profit = Math.max(0, tier3Price - unitCost);
+                const tier3MarginPct = tier3Price > 0 ? (tier3Profit / tier3Price) * 100 : 0;
+                const tier3ProjectedProfit = tier3Profit * wholesaleTargetVolume;
+                const tier3ProjectedRevenue = tier3Price * wholesaleTargetVolume;
+
+                const hasSavedTiers = editForm.wholesaleTiers && editForm.wholesaleTiers.length > 0;
+
+                return (
+                  <div className="space-y-5 animate-fade-in text-stone-800">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-stone-200 pb-3">
+                      <div>
+                        <h3 className="text-xs font-bold text-stone-950 uppercase tracking-wider flex items-center gap-1.5">
+                          Bulk Pricing & Wholesale Tier Optimizer
+                        </h3>
+                        <p className="text-[10px] text-stone-400 mt-0.5">
+                          Configure sliding-scale bulk order tiers. Simulates profits and recommends wholesale discounts based on raw cost structure.
+                        </p>
+                      </div>
+                      <span className="text-[9px] bg-emerald-50 border border-emerald-200 text-emerald-800 px-2 py-0.5 rounded font-mono font-bold uppercase tracking-wider self-start sm:self-center">
+                        Active Simulation
+                      </span>
+                    </div>
+
+                    {/* Current Economics Summary banner */}
+                    <div className="bg-gradient-to-r from-stone-50 to-stone-100 border border-stone-200 p-4 rounded-lg grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs font-semibold">
+                      <div>
+                        <span className="text-[9px] text-stone-400 font-bold uppercase tracking-wider block">Regular Retail Price</span>
+                        <p className="text-sm font-black text-stone-900 font-mono mt-0.5">₹{regularPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                      </div>
+
+                      <div>
+                        <span className="text-[9px] text-stone-400 font-bold uppercase tracking-wider block">
+                          Unit Cost Price {isDerivedCost && ' (Derived)'}
+                        </span>
+                        <p className="text-sm font-black text-stone-700 font-mono mt-0.5">₹{unitCost.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                        {isDerivedCost && <p className="text-[8px] text-amber-600 font-medium">45% cost fallback estimate</p>}
+                      </div>
+
+                      <div>
+                        <span className="text-[9px] text-stone-400 font-bold uppercase tracking-wider block">Current Unit Profit</span>
+                        <p className="text-sm font-black text-stone-950 font-mono mt-0.5">₹{currentUnitProfit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                      </div>
+
+                      <div>
+                        <span className="text-[9px] text-stone-400 font-bold uppercase tracking-wider block">Current Retail Margin</span>
+                        <span className="inline-block px-1.5 py-0.5 rounded font-mono text-[10px] font-bold bg-stone-950 text-white mt-1">
+                          {currentMarginPct.toFixed(1)}% Margin
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Simulation Parameters section */}
+                    <div className="bg-white border border-stone-200 rounded-lg p-5 space-y-4">
+                      <h4 className="text-[10px] font-extrabold text-stone-400 uppercase tracking-widest">Simulator Controls & Assumptions</h4>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs">
+                        {/* Target Sales Volume Slider */}
+                        <div className="space-y-1.5">
+                          <div className="flex justify-between items-center font-bold text-stone-600 uppercase text-[10px]">
+                            <span>Projected Campaign Volume</span>
+                            <span className="font-mono text-stone-900 font-extrabold">{wholesaleTargetVolume.toLocaleString()} units</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="50"
+                            max="5000"
+                            step="50"
+                            value={wholesaleTargetVolume}
+                            onChange={(e) => setWholesaleTargetVolume(parseInt(e.target.value))}
+                            className="w-full accent-[#005c46] h-1 bg-stone-200 rounded-lg cursor-pointer"
+                          />
+                          <p className="text-[9px] text-stone-400">Projected target units sold to simulate revenue and gross margins.</p>
+                        </div>
+
+                        {/* Cost Price override field */}
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-bold text-stone-600 uppercase tracking-wide">Adjust Cost Price for Simulation (₹)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={editForm.costPrice || 0}
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value) || 0;
+                              setEditForm(prev => ({ ...prev, costPrice: val }));
+                            }}
+                            placeholder="Enter custom cost"
+                            className="w-full text-xs font-semibold p-2 border border-stone-200 bg-stone-50 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#008060]"
+                          />
+                          <p className="text-[9px] text-stone-400">Override the raw product cost to audit profit impact dynamically.</p>
+                        </div>
+                      </div>
+
+                      {/* Tier Discount Controls */}
+                      <div className="pt-2 border-t border-stone-100">
+                        <span className="text-[10px] font-extrabold text-stone-400 uppercase tracking-widest block mb-3">Sliding Tier Settings</span>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          
+                          {/* Tier 1 */}
+                          <div className="bg-stone-50/50 p-3 rounded-lg border border-stone-200 space-y-2">
+                            <span className="text-[9px] font-bold text-purple-700 uppercase tracking-wider block">Tier 1: Small Bulk</span>
+                            <div className="grid grid-cols-2 gap-1.5 text-[10px]">
+                              <div>
+                                <label className="text-[8px] text-stone-400 uppercase font-bold block mb-0.5">MOQ Limit</label>
+                                <input
+                                  type="number"
+                                  min="2"
+                                  value={wholesaleTier1Moq}
+                                  onChange={(e) => setWholesaleTier1Moq(parseInt(e.target.value) || 2)}
+                                  className="w-full font-bold p-1 bg-white border border-stone-200 rounded focus:outline-none"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[8px] text-stone-400 uppercase font-bold block mb-0.5">Discount %</label>
+                                <input
+                                  type="number"
+                                  min="1"
+                               max="90"
+                                  value={wholesaleTier1Discount}
+                                  onChange={(e) => setWholesaleTier1Discount(parseInt(e.target.value) || 0)}
+                                  className="w-full font-bold p-1 bg-white border border-stone-200 rounded focus:outline-none"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Tier 2 */}
+                          <div className="bg-stone-50/50 p-3 rounded-lg border border-stone-200 space-y-2">
+                            <span className="text-[9px] font-bold text-blue-700 uppercase tracking-wider block">Tier 2: Medium Bulk</span>
+                            <div className="grid grid-cols-2 gap-1.5 text-[10px]">
+                              <div>
+                                <label className="text-[8px] text-stone-400 uppercase font-bold block mb-0.5">MOQ Limit</label>
+                                <input
+                                  type="number"
+                                  min="2"
+                                  value={wholesaleTier2Moq}
+                                  onChange={(e) => setWholesaleTier2Moq(parseInt(e.target.value) || 2)}
+                                  className="w-full font-bold p-1 bg-white border border-stone-200 rounded focus:outline-none"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[8px] text-stone-400 uppercase font-bold block mb-0.5">Discount %</label>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  max="90"
+                                  value={wholesaleTier2Discount}
+                                  onChange={(e) => setWholesaleTier2Discount(parseInt(e.target.value) || 0)}
+                                  className="w-full font-bold p-1 bg-white border border-stone-200 rounded focus:outline-none"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Tier 3 */}
+                          <div className="bg-stone-50/50 p-3 rounded-lg border border-stone-200 space-y-2">
+                            <span className="text-[9px] font-bold text-emerald-800 uppercase tracking-wider block">Tier 3: Distributor VIP</span>
+                            <div className="grid grid-cols-2 gap-1.5 text-[10px]">
+                              <div>
+                                <label className="text-[8px] text-stone-400 uppercase font-bold block mb-0.5">MOQ Limit</label>
+                                <input
+                                  type="number"
+                                  min="2"
+                                  value={wholesaleTier3Moq}
+                                  onChange={(e) => setWholesaleTier3Moq(parseInt(e.target.value) || 2)}
+                                  className="w-full font-bold p-1 bg-white border border-stone-200 rounded focus:outline-none"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[8px] text-stone-400 uppercase font-bold block mb-0.5">Discount %</label>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  max="90"
+                                  value={wholesaleTier3Discount}
+                                  onChange={(e) => setWholesaleTier3Discount(parseInt(e.target.value) || 0)}
+                                  className="w-full font-bold p-1 bg-white border border-stone-200 rounded focus:outline-none"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Calculated Suggested Tiers Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      
+                      {/* T1 Display */}
+                      <div className="bg-white border border-stone-200 rounded-lg p-4 space-y-3.5 shadow-3xs flex flex-col justify-between">
+                        <div>
+                          <div className="flex justify-between items-center border-b border-stone-100 pb-1.5">
+                            <span className="text-[9px] text-purple-700 font-extrabold uppercase font-bold">Tier 1 (MOQ {wholesaleTier1Moq}+)</span>
+                            <span className="text-[9px] bg-purple-100 text-purple-800 font-bold px-1.5 py-0.5 rounded font-mono">-{wholesaleTier1Discount}% Off</span>
+                          </div>
+                          
+                          <div className="py-2 space-y-1">
+                            <p className="text-[9px] text-stone-400 uppercase font-bold">Suggested Wholesale Price</p>
+                            <p className="text-xl font-black text-stone-900 font-mono font-bold">₹{tier1Price.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</p>
+                            <p className="text-[9px] text-stone-500 font-medium">Saves ₹{(regularPrice - tier1Price).toFixed(2)} per unit</p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2 pt-2 border-t border-stone-100 text-[10px]">
+                          <div className="flex justify-between text-stone-500 font-medium">
+                            <span>Unit Net Profit:</span>
+                            <span className="font-mono font-bold text-stone-900">₹{tier1Profit.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
+                          </div>
+                          <div className="flex justify-between text-stone-500 font-medium">
+                            <span>Wholesale Margin %:</span>
+                            <span className={`inline-block px-1 rounded font-mono text-[9px] font-bold ${
+                              tier1MarginPct > 35 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                            }`}>
+                              {tier1MarginPct.toFixed(1)}%
+                            </span>
+                          </div>
+                          <div className="bg-stone-50 p-1.5 rounded text-[9px] mt-1 space-y-0.5">
+                            <div className="flex justify-between font-bold text-stone-500">
+                              <span>REV @ {wholesaleTargetVolume} UNITS:</span>
+                              <span className="font-mono text-stone-900">₹{tier1ProjectedRevenue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
+                            </div>
+                            <div className="flex justify-between font-extrabold text-stone-700">
+                              <span>PROFIT GAIN:</span>
+                              <span className="font-mono text-emerald-700">₹{tier1ProjectedProfit.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* T2 Display */}
+                      <div className="bg-white border border-stone-200 rounded-lg p-4 space-y-3.5 shadow-3xs flex flex-col justify-between">
+                        <div>
+                          <div className="flex justify-between items-center border-b border-stone-100 pb-1.5">
+                            <span className="text-[9px] text-blue-700 font-extrabold uppercase font-bold">Tier 2 (MOQ {wholesaleTier2Moq}+)</span>
+                            <span className="text-[9px] bg-blue-100 text-blue-800 font-bold px-1.5 py-0.5 rounded font-mono">-{wholesaleTier2Discount}% Off</span>
+                          </div>
+                          
+                          <div className="py-2 space-y-1">
+                            <p className="text-[9px] text-stone-400 uppercase font-bold">Suggested Wholesale Price</p>
+                            <p className="text-xl font-black text-stone-900 font-mono font-bold">₹{tier2Price.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</p>
+                            <p className="text-[9px] text-stone-500 font-medium">Saves ₹{(regularPrice - tier2Price).toFixed(2)} per unit</p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2 pt-2 border-t border-stone-100 text-[10px]">
+                          <div className="flex justify-between text-stone-500 font-medium">
+                            <span>Unit Net Profit:</span>
+                            <span className="font-mono font-bold text-stone-900">₹{tier2Profit.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
+                          </div>
+                          <div className="flex justify-between text-stone-500 font-medium">
+                            <span>Wholesale Margin %:</span>
+                            <span className={`inline-block px-1 rounded font-mono text-[9px] font-bold ${
+                              tier2MarginPct > 35 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                            }`}>
+                              {tier2MarginPct.toFixed(1)}%
+                            </span>
+                          </div>
+                          <div className="bg-stone-50 p-1.5 rounded text-[9px] mt-1 space-y-0.5">
+                            <div className="flex justify-between font-bold text-stone-500">
+                              <span>REV @ {wholesaleTargetVolume} UNITS:</span>
+                              <span className="font-mono text-stone-900">₹{tier2ProjectedRevenue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
+                            </div>
+                            <div className="flex justify-between font-extrabold text-stone-700">
+                              <span>PROFIT GAIN:</span>
+                              <span className="font-mono text-emerald-700">₹{tier2ProjectedProfit.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* T3 Display */}
+                      <div className="bg-white border border-stone-200 rounded-lg p-4 space-y-3.5 shadow-3xs flex flex-col justify-between">
+                        <div>
+                          <div className="flex justify-between items-center border-b border-stone-100 pb-1.5">
+                            <span className="text-[9px] text-emerald-800 font-extrabold uppercase font-bold">Tier 3 (MOQ {wholesaleTier3Moq}+)</span>
+                            <span className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded font-mono">-{wholesaleTier3Discount}% Off</span>
+                          </div>
+                          
+                          <div className="py-2 space-y-1">
+                            <p className="text-[9px] text-stone-400 uppercase font-bold">Suggested Wholesale Price</p>
+                            <p className="text-xl font-black text-stone-900 font-mono font-bold">₹{tier3Price.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</p>
+                            <p className="text-[9px] text-stone-500 font-medium">Saves ₹{(regularPrice - tier3Price).toFixed(2)} per unit</p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2 pt-2 border-t border-stone-100 text-[10px]">
+                          <div className="flex justify-between text-stone-500 font-medium">
+                            <span>Unit Net Profit:</span>
+                            <span className="font-mono font-bold text-stone-900">₹{tier3Profit.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
+                          </div>
+                          <div className="flex justify-between text-stone-500 font-medium">
+                            <span>Wholesale Margin %:</span>
+                            <span className={`inline-block px-1 rounded font-mono text-[9px] font-bold ${
+                              tier3MarginPct > 20 ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
+                            }`}>
+                              {tier3MarginPct.toFixed(1)}%
+                            </span>
+                          </div>
+                          <div className="bg-stone-50 p-1.5 rounded text-[9px] mt-1 space-y-0.5">
+                            <div className="flex justify-between font-bold text-stone-500">
+                              <span>REV @ {wholesaleTargetVolume} UNITS:</span>
+                              <span className="font-mono text-stone-900">₹{tier3ProjectedRevenue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
+                            </div>
+                            <div className="flex justify-between font-extrabold text-stone-700">
+                              <span>PROFIT GAIN:</span>
+                              <span className="font-mono text-emerald-700">₹{tier3ProjectedProfit.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                    </div>
+
+                    {/* Footer Apply Rules Panel */}
+                    <div className="bg-stone-900 text-white p-4 rounded-lg flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border border-stone-800">
+                      <div>
+                        <h4 className="text-xs font-bold text-amber-400 uppercase">Save Wholesale Structure Metadata</h4>
+                        <p className="text-[10px] text-stone-300 mt-0.5 leading-relaxed font-medium">
+                          Commit these simulated price points to the current item's custom database schema.
+                        </p>
+                        {hasSavedTiers && (
+                          <span className="inline-block mt-2 text-[9px] text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded font-mono">
+                            ✓ Currently active wholesale configuration applied
+                          </span>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const tiersList = [
+                            { moq: wholesaleTier1Moq, discount: wholesaleTier1Discount, suggestedPrice: parseFloat(tier1Price.toFixed(2)) },
+                            { moq: wholesaleTier2Moq, discount: wholesaleTier2Discount, suggestedPrice: parseFloat(tier2Price.toFixed(2)) },
+                            { moq: wholesaleTier3Moq, discount: wholesaleTier3Discount, suggestedPrice: parseFloat(tier3Price.toFixed(2)) }
+                          ];
+                          setEditForm(prev => ({
+                            ...prev,
+                            wholesaleTiers: tiersList
+                          }));
+                          onLogActivity(`Applied wholesale bulk price configurations to ${editForm.name}`, 'Product', editForm.name || 'Catalog Item');
+                          alert(`Applied ${tiersList.length} wholesale tier structures successfully! Save the product entity to persist completely.`);
+                        }}
+                        disabled={isReadOnly || regularPrice === 0}
+                        className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-extrabold rounded-lg shadow transition-colors shrink-0 self-start sm:self-center cursor-pointer"
+                      >
+                        Apply Suggested Wholesale Tiers
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
 
             </div>
           </div>
